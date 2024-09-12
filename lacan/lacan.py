@@ -27,12 +27,15 @@ def mol_to_pairs(m):
             Chem.SanitizeMol(newmol)
             frags=Chem.GetMolFrags(newmol,asMols=True)
             idxs = []
-            for f in frags:
-                d_idx = f.GetSubstructMatches(p)[0][0]
-                a = f.GetAtomWithIdx(d_idx).GetNeighbors()[0].GetIdx()
-                MFPGEN.GetSparseFingerprint(f,fromAtoms=[a],additionalOutput=ao)
-                idxs.append(ao.GetAtomToBits()[a][1])
-            id_pairs.append(tuple(sorted(idxs)))
+            try:
+                for f in frags:
+                    d_idx = f.GetSubstructMatches(p)[0][0]
+                    a = f.GetAtomWithIdx(d_idx).GetNeighbors()[0].GetIdx()
+                    MFPGEN.GetSparseFingerprint(f,fromAtoms=[a],additionalOutput=ao)
+                    idxs.append(ao.GetAtomToBits()[a][1])
+                id_pairs.append(tuple(sorted(idxs)))
+            except:
+                pass
         else: # check if to include this
             newmol=Chem.FragmentOnBonds(m,[b.GetIdx()])
             try:
@@ -52,7 +55,7 @@ def mol_to_pairs(m):
     return id_pairs
 
 def get_profile_for_mols(mols,profile_name,size=1024):
-    all_pairs = [mol_to_pairs(m) for m in mols]
+    all_pairs = [mol_to_pairs(m) for m in mols if m]
     all_pairs = [item for sublist in all_pairs for item in sublist] #flatten
     idx = [pair[0] for pair in all_pairs] + [pair[1] for pair in all_pairs]
     idx_occurences = dict(Counter(idx).most_common(size-1))
