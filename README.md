@@ -27,7 +27,7 @@ score,info = lacan.score_mol(m,p)
 print(info["bad_bonds"])
 ```
 
-which will output a dictionary with an entry for every bond in the molecule. These
+which will output a dictionary with an entry for every bond in the molecule. Currently the filter is binary, so the score is 1 if the molecule passes the filter and 0 if it doesn't. The problem bonds output
 follow rdkit bond numbering which means we can visualize problem bonds in our
 molecules easily as follows:
 
