@@ -64,7 +64,8 @@ this outputs the following molecules that are "in between" its parents fluoxetin
 d = Draw.MolsToGridImage(median_molecules)
 display(d)
 ```
-![image](https://github.com/user-attachments/assets/c6b6f37f-5537-4588-90f3-9c52aaf5bee1)
+![image](https://github.com/user-attachments/assets/e6609b81-21ca-4f9a-9c3c-3fe15cbc38d8)
+
 
 ## Building a profile
 
