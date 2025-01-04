@@ -63,7 +63,7 @@ def crossover_fragments(s1,s2,c1,c2,profile,nmols=10,randomseed=123,max_steps=50
                 else:
                     atoms1 += len(smol.GetAtoms())
             ratio = atoms2/(atoms1+atoms2)
-            if lacan.score_mol(cmol,profile)[0]>0:
+            if lacan.score_mol(cmol,profile)[0]>0.5:
                 if hacmin < len(cmol.GetAtoms()) < hacmax:
                     if min_ratio < ratio < max_ratio:
                         ik = inchi.MolToInchiKey(cmol)
@@ -74,7 +74,6 @@ def crossover_fragments(s1,s2,c1,c2,profile,nmols=10,randomseed=123,max_steps=50
             print(e)
             pass
         steps += 1
-    print(len(mols)/steps)
     return mols
     
 def breed(m1,m2,profile,nmols=10,cuts=3,hacrange=(0.8,1.2),interprange=(0.3,0.7)):
@@ -82,7 +81,7 @@ def breed(m1,m2,profile,nmols=10,cuts=3,hacrange=(0.8,1.2),interprange=(0.3,0.7)
     s2,c2 = fragment_molecule(m2,cuts)
     n1 = len(m1.GetAtoms())
     n2 = len(m2.GetAtoms())
-    if len(s1) == 0:
+    if len(s1) == 0 or len(s2) == 0:
         print("didnt find a way to cut >2 times, reverting to twice")
         s1,c1 = fragment_molecule(m1,2)
         s2,c2 = fragment_molecule(m2,2)
