@@ -4,7 +4,7 @@ from collections import Counter
 import sys, os
 import pickle
 import argparse
-
+import math
 
 RDLogger.DisableLog('rdApp.*')
 MFPGEN = rdFingerprintGenerator.GetMorganGenerator(1)
@@ -98,7 +98,7 @@ def load_profile(profile_name):
         profile = pickle.load(file)
     return profile
         
-def score_mol(mol,profile=None,mode="threshold",t=0.05):
+def score_mol(mol,profile=None,mode="score",t=0.05):
     apb = assess_per_bond(mol,profile)
     info = {}
     if len(apb) == 0:
@@ -109,6 +109,10 @@ def score_mol(mol,profile=None,mode="threshold",t=0.05):
             score = 0
         else:
             score = 1
+    elif mode == "score":
+        info["bad_bonds"] = [i for i,b in enumerate(apb) if b < t]
+        #score set so when threshold is reached, score is 0.5. 
+        score = min(0.5*(min(apb)/t)**0.5,1.0)
     else:
         print("mode not supported yet, sorry.")
     return score, info
@@ -161,7 +165,7 @@ if __name__ == "__main__":
     if args["mode"] == "score":
         mols = [m for m in suppl]
         PROFILE = load_profile(args["profile"])
-        scores = [score_mol(m,PROFILE,t=args["threshold"]) for m in mols]
+        scores = [score_mol(m,PROFILE,t=args["threshold"],mode="threshold") for m in mols]
         print("overview of failed compounds:")
         print("score\tbad bonds idx\tSMILES")
         for i,s in enumerate(scores):
