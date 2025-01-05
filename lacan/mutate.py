@@ -1,6 +1,6 @@
 from rdkit import Chem, RDLogger
 from rdkit.Chem import rdChemReactions, inchi
-import lacan
+from lacan import lacan
 import random,argparse
 
 RDLogger.DisableLog('rdApp.*')
