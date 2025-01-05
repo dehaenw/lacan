@@ -53,8 +53,6 @@ This filter enables us to recombine fragments and filter out linkages that are r
 example:
 ```python
 from lacan import breed
-from rdkit import Chem
-from rdkit.Chem import Draw
 
 m1 = Chem.MolFromSmiles("c1cc(ccc1[C@@H]2CCNC[C@H]2COc3ccc4c(c3)OCO4)F")
 m2 = Chem.MolFromSmiles("CNCCC(C1=CC=CC=C1)OC2=CC=C(C=C2)C(F)(F)F")
@@ -67,6 +65,27 @@ d = Draw.MolsToGridImage(median_molecules)
 display(d)
 ```
 ![image](https://github.com/user-attachments/assets/e6609b81-21ca-4f9a-9c3c-3fe15cbc38d8)
+
+## Mutating molecules
+
+The filter can also be used to filter out the sometimes nonsensical molecules that results from applying simple molecular mutations. 
+
+example:
+```python
+from lacan import mutate
+m = Chem.MolFromSmiles("c1cc(O)ccc1CC(C(=O)O)N")
+mutated_molecules = mutate.apply_all_mutations(m,p,0.8)
+```
+
+this outputs a set of close mutants of tyrosine:
+```python
+d = Draw.MolsToGridImage(mutated_molecules,molsPerRow=8)
+display(d)
+```
+![image](https://github.com/user-attachments/assets/dfc04117-c471-4f12-8a6a-f1d0d7662072)
+
+
+
 
 
 ## Building a profile
