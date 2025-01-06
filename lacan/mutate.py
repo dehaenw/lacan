@@ -25,6 +25,8 @@ mutate_smarts = {"addC":"[H1,H2,H3:0]>>[*:0][CH3]",
                  "replaceN":"[!N;!$([CH0]);d3,d2,d1;A:0]>>[N:0]",
                  "replaceO":"[!O;!$([CH0]);$([*](-[*])(-[*]));d2,d1;A:0]>>[O:0]",
                  "replaceS":"[!S;!$([CH0]);$([*](-[*])(-[*]));d2,d1;A:0]>>[S:0]",
+                 "aroCtoN":"[cH:0]>>[nH0:0]",
+                 "aroNtoC":"[nH0X2:0]>>[cH:0]",
                  "openring":"[R]@!:[R]>>([*:0].[*:1])",
                  "close3ring":"[!R;H1,H2,H3:0][*:1][!R;H1,H2,H3:2]>>[*:0]1[*:1][*:2]1",
                  "close4ring":"[!R;H1,H2,H3:0][*:1][*:2][!R;H1,H2,H3:3]>>[*:0]1[*:1][*:2][*:3]1",
@@ -44,8 +46,14 @@ mutate_smarts = {"addC":"[H1,H2,H3:0]>>[*:0][CH3]",
 mutate_ops = {name:rdChemReactions.ReactionFromSmarts(mutate_smarts[name]) for name in mutate_smarts}
 
 
-def apply_all_mutations(mol,p,score_threshold):
+def apply_mutations(mol,p,score_threshold,mode="all"):
     mutate_prods = []
+    if mode=="all":
+        ops = mutate_ops
+    elif mode=="random":
+        ops = random.sample(list(mutate_ops.keys()),1)[0]
+    else:
+        print("this mode doesnt exist")
     for op in mutate_ops:
         rxn = mutate_ops[op]
         prods = rxn.RunReactants((mol,))
@@ -69,30 +77,6 @@ def apply_all_mutations(mol,p,score_threshold):
                 iks.append(ik)
     return filtered_prods
     
-def apply_one_mutation(mol,p,score_threshold):
-    mutate_prods = []
-    op = random.sample(list(mutate_ops.keys()),1)[0]
-    rxn = mutate_ops[op]
-    prods = rxn.RunReactants((mol,))
-    if len(prods)>0:
-        for prod in prods:
-            try:
-                Chem.SanitizeMol(prod[0])
-                if prod[0]:
-                    mutate_prods.append(prod[0])
-            except Exception as e:
-                print(op,"got some exception",e)
-
-    filtered_prods = []
-    iks = []
-    for m in mutate_prods:
-        score,info = lacan.score_mol(m,p)   
-        if score>score_threshold:
-            ik = inchi.MolToInchiKey(m)
-            if ik not in iks:
-                filtered_prods.append(m)
-                iks.append(ik)
-    return filtered_prods
     
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Lacan Mutate CLI")
@@ -136,11 +120,5 @@ if __name__ == "__main__":
     args = vars(parser.parse_args())
     p = lacan.load_profile(args["profile"])
     mol = Chem.MolFromSmiles(args["input"])
-    if args["mode"] == "all":
-        muts = apply_all_mutations(mol,p,args["threshold"])
-    elif args["mode"] == "random":
-        muts = apply_one_mutation(mol,p,args["threshold"])
-    else:
-        print("this mode doesnt exist")
-    for m in muts:
+    for m in apply_mutations(mol,p,args["threshold"],args["mode"]):
         print(Chem.MolToSmiles(m))
