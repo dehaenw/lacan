@@ -74,7 +74,7 @@ example:
 ```python
 from lacan import mutate
 m = Chem.MolFromSmiles("c1cc(O)ccc1CC(C(=O)O)N")
-mutated_molecules = mutate.apply_all_mutations(m,p,0.8)
+mutated_molecules = mutate.apply_mutations(m,p,0.8)
 ```
 
 this outputs a set of close mutants of tyrosine:
