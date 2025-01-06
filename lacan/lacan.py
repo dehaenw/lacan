@@ -37,10 +37,16 @@ def mol_to_pairs(m):
             except:
                 pass
         else: # check if to include this
+            ri = m.GetRingInfo()
+            ar = ri.AtomRings()
             newmol=Chem.FragmentOnBonds(m,[b.GetIdx()])
             try:
                 flags = Chem.SanitizeFlags.SANITIZE_SYMMRINGS
                 Chem.SanitizeMol(newmol, sanitizeOps=flags)
+                ri = newmol.GetRingInfo()
+                for ring in ar:
+                    for idx in ring:
+                        ri.AddRing((idx,), (0,))
                 idxs = []
                 d_idx = [d[0] for d in newmol.GetSubstructMatches(p)]
                 assert len(d_idx)==2, "need two dummies when fragmenting ring"
@@ -172,7 +178,7 @@ if __name__ == "__main__":
             if s[0] == 0:
                 print(str(s[0])+"\t"+str(s[1]["bad_bonds"])+"\t"+Chem.MolToSmiles(mols[i]))
             else:
-                pass
-        print(sum([s[0] for s in scores])/len(scores),"molecules passed")
+                print(str(s[0])+"\t"+str(s[1]["bad_bonds"])+"\t"+Chem.MolToSmiles(mols[i]))
+        print(100*sum([s[0] for s in scores])/len(scores),"percent of molecules passed")
     elif args["mode"] == "profile":
         get_profile_for_mols(suppl,args["profile"],size=args["size"])
