@@ -12,53 +12,36 @@ ao = rdFingerprintGenerator.AdditionalOutput()
 ao.AllocateBitInfoMap()
 ao.AllocateAtomToBits()
 p = Chem.MolFromSmarts("[#0]") # dummy atom
+srflag = Chem.SanitizeFlags.SANITIZE_SYMMRINGS
 
 
 
 def mol_to_pairs(m):
     """
-    function that fractures every non ring bond and reports the two ECFP2
+    function that fractures every bond and reports the two ECFP2
     (including dummy) at the fracture point.
     """
     id_pairs = []
+    ri_full = m.GetRingInfo()
+    ar = ri_full.AtomRings()
     for b in m.GetBonds():
-        if b.IsInRing()==False:
-            newmol=Chem.FragmentOnBonds(m,[b.GetIdx()])
-            Chem.SanitizeMol(newmol)
-            frags=Chem.GetMolFrags(newmol,asMols=True)
-            idxs = []
-            try:
-                for f in frags:
-                    d_idx = f.GetSubstructMatches(p)[0][0]
-                    a = f.GetAtomWithIdx(d_idx).GetNeighbors()[0].GetIdx()
-                    MFPGEN.GetSparseFingerprint(f,fromAtoms=[a],additionalOutput=ao)
-                    idxs.append(ao.GetAtomToBits()[a][1])
-                id_pairs.append(tuple(sorted(idxs)))
-            except:
-                pass
-        else: # check if to include this
-            ri = m.GetRingInfo()
-            ar = ri.AtomRings()
-            newmol=Chem.FragmentOnBonds(m,[b.GetIdx()])
-            try:
-                flags = Chem.SanitizeFlags.SANITIZE_SYMMRINGS
-                Chem.SanitizeMol(newmol, sanitizeOps=flags)
-                ri = newmol.GetRingInfo()
+        bidx = [b.GetBeginAtomIdx(),b.GetEndAtomIdx()]
+        newmol=Chem.FragmentOnBonds(m,[b.GetIdx()])
+        try:
+            if b.IsInRing():
+                Chem.SanitizeMol(newmol,sanitizeOps=srflag)
+                ri = newmol.GetRingInfo() #reset ringinfo trick
                 for ring in ar:
                     for idx in ring:
                         ri.AddRing((idx,), (0,))
-                idxs = []
-                d_idx = [d[0] for d in newmol.GetSubstructMatches(p)]
-                assert len(d_idx)==2, "need two dummies when fragmenting ring"
-                for idx in d_idx:
-                    a = newmol.GetAtomWithIdx(idx).GetNeighbors()[0].GetIdx()
-                    MFPGEN.GetSparseFingerprint(newmol,fromAtoms=[a],additionalOutput=ao)
-                    idxs.append(ao.GetAtomToBits()[a][1])
-                id_pairs.append(tuple(sorted(idxs)))
-            except Exception as e:
-                print(e)
-                pass #probably a aromatic ring that doesnt sanitize upon fragmentation
+            else:
+                Chem.SanitizeMol(newmol)
+            MFPGEN.GetSparseFingerprint(newmol,fromAtoms=bidx,additionalOutput=ao)
+            id_pairs.append(tuple(sorted([ao.GetAtomToBits()[idx][1] for idx in bidx])))
+        except Exception as e:
+            pass #silent for now
     return id_pairs
+
 
 def get_profile_for_mols(suppl,profile_name,size=1024):
     all_pairs = [mol_to_pairs(m) for m in suppl if m]
