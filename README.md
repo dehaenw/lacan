@@ -6,6 +6,8 @@ LACAN filter: Leveraging adjacent co-ocurrence of atomic neighborhoods for molec
 
 Some molecular fragments are common, but they have the tendency not to occur together. For example, alkyloxy radicals are frequent motifs in medicinal chemistry datasets, whereas the linkage of both radicals into a peroxide is rather uncommon. Likewise, halides and amines are some of the most commonly occurring atomic neighborhoods, and yet their pairing results in the unstable and toxic haloamine motif. We apply this concept using co-occurences of ECFP2 like atomic neighborhoods at the bond interface, and leverage co-occurence patterns to construct a molecular filter that highlights uncommon linkages.
 
+LACAN was presented at the 2024 RDKit UGM. The flash presentation can be found [here](https://github.com/rdkit/UGM_2024/blob/main/Presentations/Dehaen_LACAN.pdf) and may be informative as an introduction.
+
 ## Installation
 
 clone this repo, activate your environment, navigate to root dir and run:
