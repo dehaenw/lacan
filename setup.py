@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name='lacan',
-    version='0.0.1alpha',    
+    version='0.0.2alpha',    
     description='filter for adjacent fragments',
     url='https://github.com/dehaenw/lacan',
     author='Wim Dehaen',

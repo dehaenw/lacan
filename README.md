@@ -6,7 +6,9 @@ LACAN filter: Leveraging adjacent co-ocurrence of atomic neighborhoods for molec
 
 Some molecular fragments are common, but they have the tendency not to occur together. For example, alkyloxy radicals are frequent motifs in medicinal chemistry datasets, whereas the linkage of both radicals into a peroxide is rather uncommon. Likewise, halides and amines are some of the most commonly occurring atomic neighborhoods, and yet their pairing results in the unstable and toxic haloamine motif. We apply this concept using co-occurences of ECFP2 like atomic neighborhoods at the bond interface, and leverage co-occurence patterns to construct a molecular filter that highlights uncommon linkages.
 
-LACAN was presented at the 2024 RDKit UGM. The flash presentation can be found [here](https://github.com/rdkit/UGM_2024/blob/main/Presentations/Dehaen_LACAN.pdf) and may be informative as an introduction.
+## Current version
+
+This is version 0.0.2alpha. This version is still experimental, and breaking changes are still expected. Several changes have been added since 0.0.1alpha, including a change to manually hash the environments instead of relying on hacky usage of the rdkit morgan fingerprint generator. Also introduced in this version is functionality for molecule generation. This is currently unoptimized and subject to change.
 
 ## Installation
 
@@ -15,6 +17,9 @@ clone this repo, activate your environment, navigate to root dir and run:
 ```
 pip install .
 ```
+
+## Example notebooks
+Some notebooks with typical use cases are provided in `lacan/example_notebooks`. Note that these notebook will need jupyter installed in the python environment. The molecule generation notebook additionally requires scikit-learn installed in the python environment.
 
 ## Basic usage: Localizing problem bonds
 
@@ -29,9 +34,7 @@ score,info = lacan.score_mol(m,p)
 print(info["bad_bonds"])
 ```
 
-which will output an array with problem bonds. The molecule is scored using the worst scored bond in the molecule, with a score ranging between 0 and 1 with 0.5 corresponding to the threshold for "acceptable" bonds.
-
-The problem bonds output
+which will output a dictionary with an entry for every bond in the molecule. Currently the filter is binary, so the score is 1 if the molecule passes the filter and 0 if it doesn't. The problem bonds output
 follow rdkit bond numbering which means we can visualize problem bonds in our
 molecules easily as follows:
 
@@ -55,6 +58,8 @@ This filter enables us to recombine fragments and filter out linkages that are r
 example:
 ```python
 from lacan import breed
+from rdkit import Chem
+from rdkit.Chem import Draw
 
 m1 = Chem.MolFromSmiles("c1cc(ccc1[C@@H]2CCNC[C@H]2COc3ccc4c(c3)OCO4)F")
 m2 = Chem.MolFromSmiles("CNCCC(C1=CC=CC=C1)OC2=CC=C(C=C2)C(F)(F)F")
@@ -66,29 +71,21 @@ this outputs the following molecules that are "in between" its parents fluoxetin
 d = Draw.MolsToGridImage(median_molecules)
 display(d)
 ```
-![image](https://github.com/user-attachments/assets/e6609b81-21ca-4f9a-9c3c-3fe15cbc38d8)
+![image](https://github.com/user-attachments/assets/c6b6f37f-5537-4588-90f3-9c52aaf5bee1)
 
-## Mutating molecules
+## Generating molecules
 
-The filter can also be used to filter out the sometimes nonsensical molecules that results from applying simple molecular mutations. 
+Random molecules can by generated simply using
 
-example:
 ```python
-from lacan import mutate
-m = Chem.MolFromSmiles("c1cc(O)ccc1CC(C(=O)O)N")
-mutated_molecules = mutate.apply_mutations(m,p,0.8)
+ms = gen.generate_filtered_molecules(n_jobs=-1,
+                                     n_molecules=9,
+                                     profile=p,
+                                     seed=456,
+                                     min_atoms=20)
 ```
 
-this outputs a set of close mutants of tyrosine:
-```python
-d = Draw.MolsToGridImage(mutated_molecules,molsPerRow=8)
-display(d)
-```
-![image](https://github.com/user-attachments/assets/dfc04117-c471-4f12-8a6a-f1d0d7662072)
-
-
-
-
+For generation towards a goal, see the example notebooks, which showcase this functionality.
 
 ## Building a profile
 
