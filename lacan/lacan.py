@@ -25,7 +25,7 @@ def hash_invariants(invs):
     """
     h = hashlib.md5()
     h.update(str(invs).encode())
-    return int.from_bytes(h.digest()[:4],signed=True) #32 bit prefix
+    return int.from_bytes(h.digest()[:4],"big",signed=True) #32 bit prefix
 
 def mol_to_pairs(mol):
     """
