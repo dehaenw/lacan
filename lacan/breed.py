@@ -4,6 +4,7 @@ from lacan import lacan
 import argparse
 import random
 from itertools import combinations
+import multiprocessing
 
 RDLogger.DisableLog('rdApp.*')
 combine_frags = rdChemReactions.ReactionFromSmarts('[*:0][#0:1].[*:2][#0:3]>>[*:0][*:2].[*:1][*:3]')
@@ -31,7 +32,7 @@ def fragment_molecule(mol,n=3):
                     cores.add(frag)
     return list(substituents),list(cores)
     
-def crossover_fragments(s1,s2,c1,c2,profile,nmols=10,randomseed=123,max_steps=50000,hacmin = 0,hacmax= 30, min_ratio=0.25, max_ratio=0.75):
+def crossover_fragments(s1,s2,c1,c2,profile,nmols=10,randomseed=123,max_steps=1000,hacmin = 0,hacmax= 30, min_ratio=0.25, max_ratio=0.75):
     mols = []
     inchis = []
     steps = 0
@@ -71,7 +72,6 @@ def crossover_fragments(s1,s2,c1,c2,profile,nmols=10,randomseed=123,max_steps=50
                             mols.append(cmol)
                             inchis.append(ik)
         except Exception as e:
-            print(e)
             pass
         steps += 1
     return mols
@@ -86,6 +86,21 @@ def breed(m1,m2,profile,nmols=10,cuts=3,hacrange=(0.8,1.2),interprange=(0.3,0.7)
         s1,c1 = fragment_molecule(m1,2)
         s2,c2 = fragment_molecule(m2,2)
     mols = crossover_fragments(s1,s2,c1,c2,profile,nmols,hacmin = int(hacrange[0]*min(n1,n2)),hacmax = int(hacrange[1]*max(n1,n2)),min_ratio=interprange[0],max_ratio=interprange[1])
+    return mols
+    
+def cross_breed_mols(mols,p,score_threshold,nmols=1,n_jobs=-1):
+    inputs = []
+    if n_jobs==-1:
+        n_jobs = multiprocessing.cpu_count()
+    for m in mols:
+        inputs.append((m,random.sample(mols,1)[0],p,nmols))
+    pool = multiprocessing.Pool(processes=n_jobs)
+    muts = pool.starmap(breed, inputs)
+    pool.close()
+    pool.join()
+    mols = []
+    for mut in muts:
+        mols += mut
     return mols
 
 

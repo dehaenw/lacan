@@ -2,6 +2,7 @@ from rdkit import Chem, RDLogger
 from rdkit.Chem import rdChemReactions, inchi
 from lacan import lacan
 import random,argparse
+import multiprocessing
 
 RDLogger.DisableLog('rdApp.*')
 
@@ -21,7 +22,7 @@ mutate_smarts = {"addC":"[H1,H2,H3:0]>>[*:0][CH3]",
                  "insertN":"[*:0]-[*:1]>>[*:0]-[NH]-[*:1]",
                  "insertO":"[*:0]-[*:1]>>[*:0]-[O]-[*:1]",
                  "insertS":"[*:0]-[*:1]>>[*:0]-[S]-[*:1]",
-                 "replaceC":"[!C;A;d4,d3,d2,d1:0]>>[C:0]",
+                 "replaceC":"[!C;A;d4,d3,d2,d1;v4,v3,v2,v1:0]>>[C:0]",
                  "replaceN":"[!N;!$([CH0]);d3,d2,d1;A:0]>>[N:0]",
                  "replaceO":"[!O;!$([CH0]);$([*](-[*])(-[*]));d2,d1;A:0]>>[O:0]",
                  "replaceS":"[!S;!$([CH0]);$([*](-[*])(-[*]));d2,d1;A:0]>>[S:0]",
@@ -40,11 +41,25 @@ mutate_smarts = {"addC":"[H1,H2,H3:0]>>[*:0][CH3]",
                  "bond1to2":"[H1,H2,H3:0]-[H1,H2,H3:1]>>[*:0]=[*:1]",
                  "bond2to1":"[A:0]=[A:1]>>[*:0]-[*:1]",
                  "bond3to2":"[*:0]#[*:1]>>[*:0]=[*:1]",
-                 "deleteD1":"[*:0][d1:1]>>[*:0].[*:1]",
+                 "deleteD1":"[!$([nX3]):0][d1:1]>>[*:0].[*:1]",
                  "deleteD2":"[*:0][d2;A:1][*:2]>>[*:0][*:2].[*:1]"}
                  
 mutate_ops = {name:rdChemReactions.ReactionFromSmarts(mutate_smarts[name]) for name in mutate_smarts}
 
+def apply_mutations_mols(mols,p,score_threshold,n_jobs=-1):
+    if n_jobs==1:
+        muts = [apply_mutations(m,p,score_threshold) for m in mols]
+    else:
+        if n_jobs==-1:
+            n_jobs = multiprocessing.cpu_count()
+        pool = multiprocessing.Pool(processes=n_jobs)
+        muts = pool.starmap(apply_mutations, [(m,p,score_threshold) for m in mols])
+        pool.close()
+        pool.join()
+    mols = []
+    for mut in muts:
+        mols += mut
+    return mols
 
 def apply_mutations(mol,p,score_threshold,mode="all"):
     mutate_prods = []
@@ -64,7 +79,8 @@ def apply_mutations(mol,p,score_threshold,mode="all"):
                     if prod[0]:
                         mutate_prods.append(prod[0])
                 except Exception as e:
-                    print(op,"got some exception",e)
+                    pass #no debugging trace for now
+                    #print(op,"got some exception",e)
 
     filtered_prods = []
     iks = []
