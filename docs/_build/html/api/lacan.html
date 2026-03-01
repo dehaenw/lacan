@@ -1,0 +1,408 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>lacan.lacan &mdash; LACAN 1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=f2a433a1"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="lacan.gen" href="gen.html" />
+    <link rel="prev" title="Overview" href="../overview.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            LACAN
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../overview.html">Overview</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">lacan.lacan</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#scoring-model">Scoring model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#cli-usage">CLI usage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#lacan.lacan.hash_invariants"><code class="docutils literal notranslate"><span class="pre">hash_invariants()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#lacan.lacan.mol_to_pairs"><code class="docutils literal notranslate"><span class="pre">mol_to_pairs()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#lacan.lacan.get_neighbors"><code class="docutils literal notranslate"><span class="pre">get_neighbors()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#lacan.lacan.get_atom_invariants"><code class="docutils literal notranslate"><span class="pre">get_atom_invariants()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#lacan.lacan.get_profile_for_mols"><code class="docutils literal notranslate"><span class="pre">get_profile_for_mols()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#lacan.lacan.assess_per_bond"><code class="docutils literal notranslate"><span class="pre">assess_per_bond()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#lacan.lacan.load_profile"><code class="docutils literal notranslate"><span class="pre">load_profile()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#lacan.lacan.get_default_profile"><code class="docutils literal notranslate"><span class="pre">get_default_profile()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#lacan.lacan.score_mol"><code class="docutils literal notranslate"><span class="pre">score_mol()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="gen.html">lacan.gen</a></li>
+<li class="toctree-l1"><a class="reference internal" href="replace.html">lacan.replace</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mutate.html">lacan.mutate</a></li>
+<li class="toctree-l1"><a class="reference internal" href="protect.html">lacan.protect</a></li>
+<li class="toctree-l1"><a class="reference internal" href="breed.html">lacan.breed</a></li>
+<li class="toctree-l1"><a class="reference internal" href="decompose.html">lacan.decompose</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">LACAN</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">lacan.lacan</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/api/lacan.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-lacan.lacan">
+<span id="lacan-lacan"></span><h1>lacan.lacan<a class="headerlink" href="#module-lacan.lacan" title="Link to this heading"></a></h1>
+<p>lacan.py — Core scoring module for LACAN.</p>
+<p>LACAN (Leveraging Adjacent Co-occurrence of Atomic Neighborhoods) scores molecules by asking how statistically likely each bond
+is, given the chemical environments on both sides of it.</p>
+<section id="scoring-model">
+<h2>Scoring model<a class="headerlink" href="#scoring-model" title="Link to this heading"></a></h2>
+<p>For each bond in a molecule, LACAN computes a pair of <strong>ECFP2-like atom
+environment identifiers</strong> — one for each endpoint — and looks up their
+co-occurrence statistics in a pre-built profile.</p>
+<p>The atom environment identifier encodes five features:</p>
+<ul class="simple">
+<li><p>Atomic number</p></li>
+<li><p>Heavy-atom degree</p></li>
+<li><p>Total hydrogen count (explicit + implicit)</p></li>
+<li><p>Formal charge</p></li>
+<li><p>Smallest ring size the atom belongs to (0 if acyclic)</p></li>
+</ul>
+<p>These five integers are hashed to a 32-bit integer via MD5
+(<a class="reference internal" href="#lacan.lacan.hash_invariants" title="lacan.lacan.hash_invariants"><code class="xref py py-func docutils literal notranslate"><span class="pre">hash_invariants()</span></code></a>).  The two hashes for a bond are sorted and stored as
+a tuple — the <em>bond pair</em> — so that the bond (A→B) and (B→A) map to the same
+key.</p>
+<p>A <strong>profile</strong> is a dict with three entries built from a molecule set:</p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">idx</span></code></dt><dd><p><code class="docutils literal notranslate"><span class="pre">{hash:</span> <span class="pre">count}</span></code> — how often each atom environment appears.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">pairs</span></code></dt><dd><p><code class="docutils literal notranslate"><span class="pre">{(hash1,</span> <span class="pre">hash2):</span> <span class="pre">count}</span></code> — how often each bond pair co-occurs.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">setsize</span></code></dt><dd><p>Total number of bonds seen, used to normalise counts to frequencies.</p>
+</dd>
+</dl>
+<p>For a bond with environments <em>e1</em> and <em>e2</em> the <strong>pointwise mutual information</strong>
+(PMI) score is:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">observed</span>  <span class="o">=</span> <span class="n">pairs</span><span class="p">[(</span><span class="n">e1</span><span class="p">,</span> <span class="n">e2</span><span class="p">)]</span> <span class="o">/</span> <span class="n">setsize</span>
+<span class="n">expected</span>  <span class="o">=</span> <span class="p">(</span><span class="n">idx</span><span class="p">[</span><span class="n">e1</span><span class="p">]</span> <span class="o">/</span> <span class="n">setsize</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">idx</span><span class="p">[</span><span class="n">e2</span><span class="p">]</span> <span class="o">/</span> <span class="n">setsize</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span>
+<span class="n">PMI</span>       <span class="o">=</span> <span class="n">observed</span> <span class="o">/</span> <span class="n">expected</span>
+</pre></div>
+</div>
+<p>A PMI &gt; 1 means the two environments co-occur more often than chance; a PMI
+near 0 means the combination is chemically unusual.</p>
+<p>The molecule-level score is derived from the <strong>minimum</strong> per-bond PMI:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">score</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">min_PMI</span> <span class="o">/</span> <span class="n">t</span><span class="p">)</span> <span class="o">**</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This equals 0.5 when the worst bond is right at the threshold <em>t</em> (default
+0.05), and 1.0 when all bonds are comfortably above it.</p>
+</section>
+<section id="cli-usage">
+<h2>CLI usage<a class="headerlink" href="#cli-usage" title="Link to this heading"></a></h2>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="o">-</span><span class="n">m</span> <span class="n">lacan</span><span class="o">.</span><span class="n">lacan</span> <span class="o">-</span><span class="n">i</span> <span class="n">molecules</span><span class="o">.</span><span class="n">smi</span> <span class="o">-</span><span class="n">p</span> <span class="n">chembl</span> <span class="o">-</span><span class="n">m</span> <span class="n">score</span> <span class="o">-</span><span class="n">t</span> <span class="mf">0.05</span>
+</pre></div>
+</div>
+<p>Modes:</p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">score</span></code></dt><dd><p>Print per-molecule score and list of failing bond indices.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">profile</span></code></dt><dd><p>Build a new profile from the input SMILES file and save it to
+<code class="docutils literal notranslate"><span class="pre">data/&lt;profile_name&gt;.pickle</span></code>.</p>
+</dd>
+</dl>
+</section>
+<dl class="py function">
+<dt class="sig sig-object py" id="lacan.lacan.hash_invariants">
+<span class="sig-prename descclassname"><span class="pre">lacan.lacan.</span></span><span class="sig-name descname"><span class="pre">hash_invariants</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">invs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/lacan/lacan.html#hash_invariants"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#lacan.lacan.hash_invariants" title="Link to this definition"></a></dt>
+<dd><p>Hash a list of integers to a reproducible, portable 32-bit signed int.</p>
+<p>Uses the first 4 bytes of an MD5 digest so that the hash is identical
+across Python versions and platforms — a requirement for profiles built on
+one machine to be usable on another.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>invs</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em> of </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Flattened atom-environment descriptor (atomic number, degree, H count,
+charge, ring size, bond type, …).</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>32-bit signed integer hash.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)">int</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="lacan.lacan.mol_to_pairs">
+<span class="sig-prename descclassname"><span class="pre">lacan.lacan.</span></span><span class="sig-name descname"><span class="pre">mol_to_pairs</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mol</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/lacan/lacan.html#mol_to_pairs"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#lacan.lacan.mol_to_pairs" title="Link to this definition"></a></dt>
+<dd><p>Compute the bond-pair identifiers for all bonds in a molecule.</p>
+<p>For each bond the function calculates two ECFP2-like atom environment
+hashes — one per endpoint — using the immediate neighbourhood (atom + all
+directly bonded neighbours, along with bond type to each).  The two hashes
+are sorted and stored as a tuple so that bond direction does not matter.</p>
+<p>This replaces RDKit’s fingerprint generators for this task to avoid the
+overhead of bond fracturing and aromatic re-sanitisation that would be
+needed with the generator API.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>mol</strong> (<em>RDKit Mol</em>)</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>One sorted (h1, h2) bond-pair per bond, in bond-index order.
+Returns [] if <em>mol</em> is None or unparseable.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)">list</a> of <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.14)">tuple</a>(<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)">int</a>, <a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)">int</a>)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="lacan.lacan.get_neighbors">
+<span class="sig-prename descclassname"><span class="pre">lacan.lacan.</span></span><span class="sig-name descname"><span class="pre">get_neighbors</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mol</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/lacan/lacan.html#get_neighbors"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#lacan.lacan.get_neighbors" title="Link to this definition"></a></dt>
+<dd><p>Return the neighbour atom indices for every atom in <em>mol</em>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>mol</strong> (<em>RDKit Mol</em>)</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">result[i]</span></code> is the list of atom indices directly bonded to atom <em>i</em>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)">list</a> of <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)">list</a> of <a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)">int</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="lacan.lacan.get_atom_invariants">
+<span class="sig-prename descclassname"><span class="pre">lacan.lacan.</span></span><span class="sig-name descname"><span class="pre">get_atom_invariants</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mol</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/lacan/lacan.html#get_atom_invariants"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#lacan.lacan.get_atom_invariants" title="Link to this definition"></a></dt>
+<dd><p>Compute ECFP2-like atom environment descriptors for every atom.</p>
+<p>Each descriptor is a list of five integers:</p>
+<ol class="arabic simple">
+<li><p>Atomic number</p></li>
+<li><p>Heavy-atom degree (number of non-H neighbours)</p></li>
+<li><p>Total hydrogen count (explicit + implicit)</p></li>
+<li><p>Formal charge</p></li>
+<li><p>Smallest ring size the atom is part of, or 0 if the atom is acyclic</p></li>
+</ol>
+<p>These are used directly as the innermost layer of the bond-pair hash
+(see <a class="reference internal" href="#lacan.lacan.mol_to_pairs" title="lacan.lacan.mol_to_pairs"><code class="xref py py-func docutils literal notranslate"><span class="pre">mol_to_pairs()</span></code></a>).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>mol</strong> (<em>RDKit Mol</em>)</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>One 5-element descriptor per atom, in atom-index order.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)">list</a> of <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)">list</a> of <a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)">int</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="lacan.lacan.get_profile_for_mols">
+<span class="sig-prename descclassname"><span class="pre">lacan.lacan.</span></span><span class="sig-name descname"><span class="pre">get_profile_for_mols</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">suppl</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">profile_name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2048</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_jobs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/lacan/lacan.html#get_profile_for_mols"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#lacan.lacan.get_profile_for_mols" title="Link to this definition"></a></dt>
+<dd><p>Build a LACAN profile from a molecule supplier and save it to disk.</p>
+<p>The profile is a dict <code class="docutils literal notranslate"><span class="pre">{&quot;idx&quot;:</span> <span class="pre">...,</span> <span class="pre">&quot;pairs&quot;:</span> <span class="pre">...,</span> <span class="pre">&quot;setsize&quot;:</span> <span class="pre">...}</span></code>
+(see module docstring) pickled to <code class="docutils literal notranslate"><span class="pre">data/&lt;profile_name&gt;.pickle</span></code> inside
+the package directory.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>suppl</strong> (<em>iterable</em><em> of </em><em>RDKit Mol objects</em><em> (</em><em>e.g. SmilesMolSupplier</em><em>)</em>)</p></li>
+<li><p><strong>profile_name</strong> (<em>str — name under which to save the profile</em>)</p></li>
+<li><p><strong>size</strong> (int — keep only the <em>size</em>-1 most common atom environments) – in <code class="docutils literal notranslate"><span class="pre">idx</span></code> (reduces profile file size; default 2048)</p></li>
+<li><p><strong>n_jobs</strong> (<em>int — parallel workers; set &lt; 1 for all CPU cores</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The profile dict (same object that is written to disk).</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)">dict</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="lacan.lacan.assess_per_bond">
+<span class="sig-prename descclassname"><span class="pre">lacan.lacan.</span></span><span class="sig-name descname"><span class="pre">assess_per_bond</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mol</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">profile</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/lacan/lacan.html#assess_per_bond"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#lacan.lacan.assess_per_bond" title="Link to this definition"></a></dt>
+<dd><p>Return the PMI score for every bond in <em>mol</em>.</p>
+<p>For each bond the PMI is:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">PMI</span> <span class="o">=</span> <span class="p">(</span><span class="n">pairs</span><span class="p">[(</span><span class="n">e1</span><span class="p">,</span><span class="n">e2</span><span class="p">)]</span> <span class="o">/</span> <span class="n">setsize</span><span class="p">)</span> <span class="o">/</span> <span class="p">((</span><span class="n">idx</span><span class="p">[</span><span class="n">e1</span><span class="p">]</span><span class="o">/</span><span class="n">setsize</span><span class="o">/</span><span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">idx</span><span class="p">[</span><span class="n">e2</span><span class="p">]</span><span class="o">/</span><span class="n">setsize</span><span class="o">/</span><span class="mi">2</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>Unknown environments (not seen in training) contribute an observed
+occurrence of 0, giving PMI = 0 for that bond.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>mol</strong> (<em>RDKit Mol</em>)</p></li>
+<li><p><strong>profile</strong> (<em>LACAN profile dict; loads the default ChEMBL profile if None</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>One PMI value per bond, in bond-index order.  Values near 0 indicate
+unusual bond environments; values &gt; 1 indicate commonly co-occurring
+environments.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)">list</a> of <a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="lacan.lacan.load_profile">
+<span class="sig-prename descclassname"><span class="pre">lacan.lacan.</span></span><span class="sig-name descname"><span class="pre">load_profile</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">profile_name</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/lacan/lacan.html#load_profile"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#lacan.lacan.load_profile" title="Link to this definition"></a></dt>
+<dd><p>Load a pickled LACAN profile from the package data directory.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>profile_name</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Name of the profile (without <code class="docutils literal notranslate"><span class="pre">.pickle</span></code> extension).  The file must
+exist at <code class="docutils literal notranslate"><span class="pre">&lt;package_dir&gt;/data/&lt;profile_name&gt;.pickle</span></code>.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Profile dict with keys <code class="docutils literal notranslate"><span class="pre">&quot;idx&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;pairs&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;setsize&quot;</span></code>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)">dict</a></p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#FileNotFoundError" title="(in Python v3.14)"><strong>FileNotFoundError</strong></a> – If the pickle file does not exist.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="lacan.lacan.get_default_profile">
+<span class="sig-prename descclassname"><span class="pre">lacan.lacan.</span></span><span class="sig-name descname"><span class="pre">get_default_profile</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/lacan/lacan.html#get_default_profile"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#lacan.lacan.get_default_profile" title="Link to this definition"></a></dt>
+<dd><p>Lazy-load the default ChEMBL profile the first time it is requested.</p>
+<p>Caches the result in the module-level <code class="docutils literal notranslate"><span class="pre">_DEFAULT_PROFILE</span></code> variable so
+subsequent calls return immediately without re-reading disk.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The ChEMBL LACAN profile.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.14)">dict</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="lacan.lacan.score_mol">
+<span class="sig-prename descclassname"><span class="pre">lacan.lacan.</span></span><span class="sig-name descname"><span class="pre">score_mol</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mol</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">profile</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'score'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">t</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.05</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/lacan/lacan.html#score_mol"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#lacan.lacan.score_mol" title="Link to this definition"></a></dt>
+<dd><p>Score a molecule using the LACAN profile, respecting protected bonds.</p>
+<p>Protected bonds (marked with <code class="docutils literal notranslate"><span class="pre">_lp</span></code> via <a class="reference internal" href="protect.html#module-lacan.protect" title="lacan.protect"><code class="xref py py-mod docutils literal notranslate"><span class="pre">lacan.protect</span></code></a>) are excluded
+from the score calculation.  This means a molecule with required-but-unusual
+motifs (e.g. a covalent warhead) can be scored fairly by protecting those
+bonds first with <a class="reference internal" href="protect.html#lacan.protect.protect_rejected_bonds" title="lacan.protect.protect_rejected_bonds"><code class="xref py py-func docutils literal notranslate"><span class="pre">protect_rejected_bonds()</span></code></a>.</p>
+<p>The score is derived from the minimum per-bond PMI over <strong>unprotected</strong>
+bonds only.  Two modes are available:</p>
+<dl>
+<dt><code class="docutils literal notranslate"><span class="pre">&quot;score&quot;</span></code> (default)</dt><dd><p>Continuous score in [0, 1].  Equals 0.5 when the worst unprotected bond
+PMI is exactly <em>t</em>, and 1.0 when all are comfortably above <em>t</em>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">score</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">min_PMI</span> <span class="o">/</span> <span class="n">t</span><span class="p">)</span> <span class="o">**</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">&quot;threshold&quot;</span></code></dt><dd><p>Binary: 1 if all unprotected bonds pass (PMI ≥ <em>t</em>), else 0.</p>
+</dd>
+</dl>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>mol</strong> (RDKit Mol (may have bonds with <code class="docutils literal notranslate"><span class="pre">_lp</span></code> protection property))</p></li>
+<li><p><strong>profile</strong> (<em>LACAN profile dict; loads the default ChEMBL profile if None</em>)</p></li>
+<li><p><strong>mode</strong> (<code class="docutils literal notranslate"><span class="pre">&quot;score&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;threshold&quot;</span></code>)</p></li>
+<li><p><strong>t</strong> (<em>bond PMI threshold</em><em> (</em><em>default 0.05</em><em>)</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">score</span></code> — float in [0, 1] (or 0/1 in threshold mode).
+<code class="docutils literal notranslate"><span class="pre">info</span></code>  — dict with key <code class="docutils literal notranslate"><span class="pre">&quot;bad_bonds&quot;</span></code>: list of unprotected bond
+indices whose PMI is below <em>t</em>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(score, info)</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../overview.html" class="btn btn-neutral float-left" title="Overview" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="gen.html" class="btn btn-neutral float-right" title="lacan.gen" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Wim Dehaen.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

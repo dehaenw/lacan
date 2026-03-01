@@ -1,0 +1,584 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>lacan.protect &mdash; LACAN 1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=f2a433a1"></script>
+      <script src="../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            LACAN
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/lacan.html">lacan.lacan</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/gen.html">lacan.gen</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/replace.html">lacan.replace</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/mutate.html">lacan.mutate</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/protect.html">lacan.protect</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/breed.html">lacan.breed</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/decompose.html">lacan.decompose</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">LACAN</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">lacan.protect</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for lacan.protect</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">protect.py — Atom and bond protection for LACAN.</span>
+
+<span class="sd">This module provides two orthogonal protection mechanisms:</span>
+
+<span class="sd">**Atom protection**</span>
+<span class="sd">    Protected atoms are skipped by all mutation (mutate.py) and fragment</span>
+<span class="sd">    replacement (replace.py) operations.  Any reaction template that would</span>
+<span class="sd">    match a protected atom is skipped entirely.  Use this to freeze a</span>
+<span class="sd">    pharmacophore, warhead, or other structural feature while allowing the</span>
+<span class="sd">    rest of the molecule to be explored.</span>
+
+<span class="sd">**Bond protection**</span>
+<span class="sd">    Protected bonds are excluded from the LACAN score computation.  Use this</span>
+<span class="sd">    when a molecule contains a required but chemically unusual motif (e.g. a</span>
+<span class="sd">    Michael-acceptor covalent warhead) whose LACAN score would unfairly</span>
+<span class="sd">    penalise the whole molecule.</span>
+
+<span class="sd">Both use the same RDKit atom/bond property ``_lp`` (a bool) so the footprint</span>
+<span class="sd">on the molecule is minimal.  All functions return *new* molecules — the</span>
+<span class="sd">originals are never modified in place.</span>
+
+<span class="sd">The :func:`mol_cleaner` utility combines both mechanisms to iteratively repair</span>
+<span class="sd">LACAN-failing molecules while preserving the parts that already pass.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">rdkit</span><span class="w"> </span><span class="kn">import</span> <span class="n">Chem</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">lacan</span><span class="w"> </span><span class="kn">import</span> <span class="n">lacan</span>
+
+<span class="n">PROP</span> <span class="o">=</span> <span class="s2">&quot;_lp&quot;</span>
+<span class="sd">&quot;&quot;&quot;Name of the RDKit atom/bond boolean property used to mark protection.&quot;&quot;&quot;</span>
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Setting protection</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+<div class="viewcode-block" id="protect_atoms_for_idx">
+<a class="viewcode-back" href="../../api/protect.html#lacan.protect.protect_atoms_for_idx">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">protect_atoms_for_idx</span><span class="p">(</span><span class="n">mol</span><span class="p">,</span> <span class="n">indices</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Mark specific atoms as protected.</span>
+
+<span class="sd">    Protected atoms are ignored by all mutation and replacement reactions —</span>
+<span class="sd">    any reaction whose SMARTS template would match a protected atom is</span>
+<span class="sd">    skipped.  Downstream operations read the ``_lp`` property to enforce this.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    mol     : RDKit Mol (not modified in place)</span>
+<span class="sd">    indices : iterable of atom indices to protect</span>
+
+<span class="sd">    Returns a new RDKit Mol with the ``_lp`` property set on the listed atoms.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">rwmol</span> <span class="o">=</span> <span class="n">Chem</span><span class="o">.</span><span class="n">RWMol</span><span class="p">(</span><span class="n">mol</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="n">indices</span><span class="p">:</span>
+        <span class="n">rwmol</span><span class="o">.</span><span class="n">GetAtomWithIdx</span><span class="p">(</span><span class="n">idx</span><span class="p">)</span><span class="o">.</span><span class="n">SetBoolProp</span><span class="p">(</span><span class="n">PROP</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">rwmol</span><span class="o">.</span><span class="n">GetMol</span><span class="p">()</span></div>
+
+
+
+<div class="viewcode-block" id="protect_atoms_matching_smarts">
+<a class="viewcode-back" href="../../api/protect.html#lacan.protect.protect_atoms_matching_smarts">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">protect_atoms_matching_smarts</span><span class="p">(</span><span class="n">mol</span><span class="p">,</span> <span class="n">smarts</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Mark all atoms matching a SMARTS pattern as protected.</span>
+
+<span class="sd">    This is the most convenient entry point when you want to lock a chemotype</span>
+<span class="sd">    (e.g. a phenyl ring, an amide, a CF₃ group) without knowing the atom</span>
+<span class="sd">    indices in advance.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    mol    : RDKit Mol</span>
+<span class="sd">    smarts : valid SMARTS string; raises ``ValueError`` if it cannot be parsed</span>
+
+<span class="sd">    Returns a new RDKit Mol.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">pattern</span> <span class="o">=</span> <span class="n">Chem</span><span class="o">.</span><span class="n">MolFromSmarts</span><span class="p">(</span><span class="n">smarts</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">pattern</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Invalid SMARTS: </span><span class="si">{</span><span class="n">smarts</span><span class="si">!r}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">indices</span> <span class="o">=</span> <span class="p">[</span><span class="n">idx</span> <span class="k">for</span> <span class="n">match</span> <span class="ow">in</span> <span class="n">mol</span><span class="o">.</span><span class="n">GetSubstructMatches</span><span class="p">(</span><span class="n">pattern</span><span class="p">)</span> <span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="n">match</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">protect_atoms_for_idx</span><span class="p">(</span><span class="n">mol</span><span class="p">,</span> <span class="n">indices</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="unprotect_atoms_for_idx">
+<a class="viewcode-back" href="../../api/protect.html#lacan.protect.unprotect_atoms_for_idx">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">unprotect_atoms_for_idx</span><span class="p">(</span><span class="n">mol</span><span class="p">,</span> <span class="n">indices</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Remove protection from specific atoms.</span>
+
+<span class="sd">    Only the listed atoms are affected; other protected atoms keep their mark.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    mol     : RDKit Mol</span>
+<span class="sd">    indices : iterable of atom indices to unprotect</span>
+
+<span class="sd">    Returns a new RDKit Mol.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">rwmol</span> <span class="o">=</span> <span class="n">Chem</span><span class="o">.</span><span class="n">RWMol</span><span class="p">(</span><span class="n">mol</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="n">indices</span><span class="p">:</span>
+        <span class="n">atom</span> <span class="o">=</span> <span class="n">rwmol</span><span class="o">.</span><span class="n">GetAtomWithIdx</span><span class="p">(</span><span class="n">idx</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">atom</span><span class="o">.</span><span class="n">HasProp</span><span class="p">(</span><span class="n">PROP</span><span class="p">):</span>
+            <span class="n">atom</span><span class="o">.</span><span class="n">ClearProp</span><span class="p">(</span><span class="n">PROP</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">rwmol</span><span class="o">.</span><span class="n">GetMol</span><span class="p">()</span></div>
+
+
+
+<div class="viewcode-block" id="unprotect_atoms_all">
+<a class="viewcode-back" href="../../api/protect.html#lacan.protect.unprotect_atoms_all">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">unprotect_atoms_all</span><span class="p">(</span><span class="n">mol</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Remove protection from all atoms.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    mol : RDKit Mol (not modified in place)</span>
+
+<span class="sd">    Returns a new RDKit Mol with no atom protection.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">rwmol</span> <span class="o">=</span> <span class="n">Chem</span><span class="o">.</span><span class="n">RWMol</span><span class="p">(</span><span class="n">mol</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">atom</span> <span class="ow">in</span> <span class="n">rwmol</span><span class="o">.</span><span class="n">GetAtoms</span><span class="p">():</span>
+        <span class="k">if</span> <span class="n">atom</span><span class="o">.</span><span class="n">HasProp</span><span class="p">(</span><span class="n">PROP</span><span class="p">):</span>
+            <span class="n">atom</span><span class="o">.</span><span class="n">ClearProp</span><span class="p">(</span><span class="n">PROP</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">rwmol</span><span class="o">.</span><span class="n">GetMol</span><span class="p">()</span></div>
+
+
+
+<div class="viewcode-block" id="protect_bonds_for_idx">
+<a class="viewcode-back" href="../../api/protect.html#lacan.protect.protect_bonds_for_idx">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">protect_bonds_for_idx</span><span class="p">(</span><span class="n">mol</span><span class="p">,</span> <span class="n">bond_indices</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Mark specific bonds as protected.</span>
+
+<span class="sd">    Protected bonds are excluded from the LACAN score (see</span>
+<span class="sd">    :func:`score_mol_ignoring_protected_bonds`).  They do **not** block</span>
+<span class="sd">    mutations — atom protection is used for that.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    mol          : RDKit Mol</span>
+<span class="sd">    bond_indices : iterable of bond indices to protect</span>
+
+<span class="sd">    Returns a new RDKit Mol.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">rwmol</span> <span class="o">=</span> <span class="n">Chem</span><span class="o">.</span><span class="n">RWMol</span><span class="p">(</span><span class="n">mol</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="n">bond_indices</span><span class="p">:</span>
+        <span class="n">rwmol</span><span class="o">.</span><span class="n">GetBondWithIdx</span><span class="p">(</span><span class="n">idx</span><span class="p">)</span><span class="o">.</span><span class="n">SetBoolProp</span><span class="p">(</span><span class="n">PROP</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">rwmol</span><span class="o">.</span><span class="n">GetMol</span><span class="p">()</span></div>
+
+
+
+<div class="viewcode-block" id="protect_rejected_bonds">
+<a class="viewcode-back" href="../../api/protect.html#lacan.protect.protect_rejected_bonds">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">protect_rejected_bonds</span><span class="p">(</span><span class="n">mol</span><span class="p">,</span> <span class="n">profile</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">t</span><span class="o">=</span><span class="mf">0.05</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Protect all bonds that currently fail the LACAN score threshold.</span>
+
+<span class="sd">    After calling this, :func:`score_mol_ignoring_protected_bonds` will score</span>
+<span class="sd">    the molecule as if those bonds do not exist.  This is useful when a</span>
+<span class="sd">    molecule contains a structural motif that is required (e.g. a reactive</span>
+<span class="sd">    warhead) but would otherwise cause the whole molecule to score 0.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    mol     : RDKit Mol</span>
+<span class="sd">    profile : LACAN profile dict; loads the default ChEMBL profile if None</span>
+<span class="sd">    t       : bond score threshold (default 0.05)</span>
+
+<span class="sd">    Returns a new RDKit Mol with failing bonds protected.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">profile</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">profile</span> <span class="o">=</span> <span class="n">lacan</span><span class="o">.</span><span class="n">load_profile</span><span class="p">(</span><span class="s2">&quot;chembl&quot;</span><span class="p">)</span>
+    <span class="n">apb</span> <span class="o">=</span> <span class="n">lacan</span><span class="o">.</span><span class="n">assess_per_bond</span><span class="p">(</span><span class="n">mol</span><span class="p">,</span> <span class="n">profile</span><span class="p">)</span>
+    <span class="n">bad_bond_indices</span> <span class="o">=</span> <span class="p">[</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">score</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">apb</span><span class="p">)</span> <span class="k">if</span> <span class="n">score</span> <span class="o">&lt;</span> <span class="n">t</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">protect_bonds_for_idx</span><span class="p">(</span><span class="n">mol</span><span class="p">,</span> <span class="n">bad_bond_indices</span><span class="p">)</span></div>
+
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Querying protection</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+<div class="viewcode-block" id="get_protected_atom_indices">
+<a class="viewcode-back" href="../../api/protect.html#lacan.protect.get_protected_atom_indices">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_protected_atom_indices</span><span class="p">(</span><span class="n">mol</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return a list of indices of all protected atoms in *mol*.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="p">[</span><span class="n">a</span><span class="o">.</span><span class="n">GetIdx</span><span class="p">()</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">mol</span><span class="o">.</span><span class="n">GetAtoms</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">a</span><span class="o">.</span><span class="n">HasProp</span><span class="p">(</span><span class="n">PROP</span><span class="p">)</span> <span class="ow">and</span> <span class="n">a</span><span class="o">.</span><span class="n">GetBoolProp</span><span class="p">(</span><span class="n">PROP</span><span class="p">)]</span></div>
+
+
+
+<div class="viewcode-block" id="get_protected_bond_indices">
+<a class="viewcode-back" href="../../api/protect.html#lacan.protect.get_protected_bond_indices">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_protected_bond_indices</span><span class="p">(</span><span class="n">mol</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return a list of indices of all protected bonds in *mol*.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="p">[</span><span class="n">b</span><span class="o">.</span><span class="n">GetIdx</span><span class="p">()</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">mol</span><span class="o">.</span><span class="n">GetBonds</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">b</span><span class="o">.</span><span class="n">HasProp</span><span class="p">(</span><span class="n">PROP</span><span class="p">)</span> <span class="ow">and</span> <span class="n">b</span><span class="o">.</span><span class="n">GetBoolProp</span><span class="p">(</span><span class="n">PROP</span><span class="p">)]</span></div>
+
+
+
+<div class="viewcode-block" id="atom_is_protected">
+<a class="viewcode-back" href="../../api/protect.html#lacan.protect.atom_is_protected">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">atom_is_protected</span><span class="p">(</span><span class="n">atom</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return True if the RDKit Atom object has the ``_lp`` protection mark.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">atom</span><span class="o">.</span><span class="n">HasProp</span><span class="p">(</span><span class="n">PROP</span><span class="p">)</span> <span class="ow">and</span> <span class="n">atom</span><span class="o">.</span><span class="n">GetBoolProp</span><span class="p">(</span><span class="n">PROP</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="bond_is_protected">
+<a class="viewcode-back" href="../../api/protect.html#lacan.protect.bond_is_protected">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">bond_is_protected</span><span class="p">(</span><span class="n">bond</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return True if the RDKit Bond object has the ``_lp`` protection mark.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">bond</span><span class="o">.</span><span class="n">HasProp</span><span class="p">(</span><span class="n">PROP</span><span class="p">)</span> <span class="ow">and</span> <span class="n">bond</span><span class="o">.</span><span class="n">GetBoolProp</span><span class="p">(</span><span class="n">PROP</span><span class="p">)</span></div>
+
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Reaction safety check</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+<div class="viewcode-block" id="reaction_touches_protected">
+<a class="viewcode-back" href="../../api/protect.html#lacan.protect.reaction_touches_protected">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">reaction_touches_protected</span><span class="p">(</span><span class="n">mol</span><span class="p">,</span> <span class="n">rxn</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return True if any match of *rxn*&#39;s reactant templates overlaps a protected atom.</span>
+
+<span class="sd">    This is called by :func:`~lacan.mutate.apply_mutations` before each</span>
+<span class="sd">    reaction to skip operations that would modify a protected atom.  The check</span>
+<span class="sd">    iterates over all reactant templates and all their substructure matches; if</span>
+<span class="sd">    any match atom index is in the protected set the reaction is skipped.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    mol : RDKit Mol (may have protected atoms)</span>
+<span class="sd">    rxn : RDKit ChemicalReaction</span>
+
+<span class="sd">    Returns True (skip this reaction) or False (safe to apply).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">protected</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">get_protected_atom_indices</span><span class="p">(</span><span class="n">mol</span><span class="p">))</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">protected</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">False</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">rxn</span><span class="o">.</span><span class="n">GetNumReactantTemplates</span><span class="p">()):</span>
+        <span class="n">template</span> <span class="o">=</span> <span class="n">rxn</span><span class="o">.</span><span class="n">GetReactantTemplate</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">match</span> <span class="ow">in</span> <span class="n">mol</span><span class="o">.</span><span class="n">GetSubstructMatches</span><span class="p">(</span><span class="n">template</span><span class="p">):</span>
+            <span class="k">if</span> <span class="nb">set</span><span class="p">(</span><span class="n">match</span><span class="p">)</span> <span class="o">&amp;</span> <span class="n">protected</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">True</span>
+    <span class="k">return</span> <span class="kc">False</span></div>
+
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># Scoring with bond exclusion</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+<div class="viewcode-block" id="score_mol_ignoring_protected_bonds">
+<a class="viewcode-back" href="../../api/protect.html#lacan.protect.score_mol_ignoring_protected_bonds">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">score_mol_ignoring_protected_bonds</span><span class="p">(</span><span class="n">mol</span><span class="p">,</span> <span class="n">profile</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;score&quot;</span><span class="p">,</span> <span class="n">t</span><span class="o">=</span><span class="mf">0.05</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Score a molecule while ignoring any bonds marked as protected.</span>
+
+<span class="sd">    This is a drop-in replacement for :func:`lacan.lacan.score_mol` that</span>
+<span class="sd">    omits protected bonds from both the minimum-score calculation and the</span>
+<span class="sd">    ``bad_bonds`` list.  If all bonds are protected the function returns 1.0</span>
+<span class="sd">    (trivially passes).</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    mol     : RDKit Mol (may have protected bonds)</span>
+<span class="sd">    profile : LACAN profile dict; loads ChEMBL default if None</span>
+<span class="sd">    mode    : ``&quot;score&quot;`` (continuous, 0–1) or ``&quot;threshold&quot;`` (0 or 1)</span>
+<span class="sd">    t       : bond score threshold (default 0.05)</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    (score, info) where ``info[&quot;bad_bonds&quot;]`` lists unprotected failing bond indices.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">profile</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">profile</span> <span class="o">=</span> <span class="n">lacan</span><span class="o">.</span><span class="n">load_profile</span><span class="p">(</span><span class="s2">&quot;chembl&quot;</span><span class="p">)</span>
+    <span class="n">apb</span> <span class="o">=</span> <span class="n">lacan</span><span class="o">.</span><span class="n">assess_per_bond</span><span class="p">(</span><span class="n">mol</span><span class="p">,</span> <span class="n">profile</span><span class="p">)</span>
+    <span class="n">protected_bonds</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">get_protected_bond_indices</span><span class="p">(</span><span class="n">mol</span><span class="p">))</span>
+    <span class="n">apb_active</span> <span class="o">=</span> <span class="p">[</span><span class="n">score</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">score</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">apb</span><span class="p">)</span> <span class="k">if</span> <span class="n">i</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">protected_bonds</span><span class="p">]</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">apb_active</span><span class="p">:</span>
+        <span class="n">apb_active</span> <span class="o">=</span> <span class="p">[</span><span class="mf">1.0</span><span class="p">]</span>  <span class="c1"># all bonds protected — trivially passes</span>
+    <span class="n">info</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="n">info</span><span class="p">[</span><span class="s2">&quot;bad_bonds&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">b</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">apb</span><span class="p">)</span> <span class="k">if</span> <span class="n">b</span> <span class="o">&lt;</span> <span class="n">t</span> <span class="ow">and</span> <span class="n">i</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">protected_bonds</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">mode</span> <span class="o">==</span> <span class="s2">&quot;threshold&quot;</span><span class="p">:</span>
+        <span class="n">score</span> <span class="o">=</span> <span class="mi">0</span> <span class="k">if</span> <span class="nb">min</span><span class="p">(</span><span class="n">apb_active</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">t</span> <span class="k">else</span> <span class="mi">1</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">score</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="nb">min</span><span class="p">(</span><span class="n">apb_active</span><span class="p">)</span> <span class="o">/</span> <span class="n">t</span><span class="p">)</span> <span class="o">**</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">score</span><span class="p">,</span> <span class="n">info</span></div>
+
+
+
+<span class="c1"># ---------------------------------------------------------------------------</span>
+<span class="c1"># mol_cleaner</span>
+<span class="c1"># ---------------------------------------------------------------------------</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_raw_mutations</span><span class="p">(</span><span class="n">mol</span><span class="p">,</span> <span class="n">profile</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Generate all valid single-step mutation products without score filtering.</span>
+
+<span class="sd">    Unlike :func:`~lacan.mutate.apply_mutations`, this function does **not**</span>
+<span class="sd">    score or filter the products.  It is used internally by :func:`mol_cleaner`</span>
+<span class="sd">    so that partially-fixed intermediates (which still have some bad bonds) are</span>
+<span class="sd">    not discarded before we get the chance to evaluate them ourselves.</span>
+
+<span class="sd">    Protected atoms are still respected: any reaction whose template matches a</span>
+<span class="sd">    protected atom is skipped.</span>
+
+<span class="sd">    Degenerate products are rejected:</span>
+<span class="sd">    * Disconnected molecules (contain ``&quot;.&quot;`` in their canonical SMILES) — these</span>
+<span class="sd">      arise from ring-opening and atom-deletion reactions and would collapse the</span>
+<span class="sd">      search into tiny fragments.</span>
+<span class="sd">    * Molecules with zero bonds — these score trivially as perfect (no bond</span>
+<span class="sd">      violations) and would be incorrectly accepted.</span>
+<span class="sd">    * Molecules with fewer than 4 heavy atoms.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    mol     : RDKit Mol (typically has protected bonds from :func:`mol_cleaner`)</span>
+<span class="sd">    profile : LACAN profile dict (unused here, kept for API consistency)</span>
+
+<span class="sd">    Returns a list of sanitized, connected, non-degenerate RDKit Mol objects.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">rdkit.Chem</span><span class="w"> </span><span class="kn">import</span> <span class="n">rdChemReactions</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">lacan.mutate</span><span class="w"> </span><span class="kn">import</span> <span class="n">mutate_ops</span>
+
+    <span class="n">products</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">rxn</span> <span class="ow">in</span> <span class="n">mutate_ops</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+        <span class="k">if</span> <span class="n">reaction_touches_protected</span><span class="p">(</span><span class="n">mol</span><span class="p">,</span> <span class="n">rxn</span><span class="p">):</span>
+            <span class="k">continue</span>
+        <span class="k">for</span> <span class="n">prod_tuple</span> <span class="ow">in</span> <span class="n">rxn</span><span class="o">.</span><span class="n">RunReactants</span><span class="p">((</span><span class="n">mol</span><span class="p">,)):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">m</span> <span class="o">=</span> <span class="n">prod_tuple</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+                <span class="n">Chem</span><span class="o">.</span><span class="n">SanitizeMol</span><span class="p">(</span><span class="n">m</span><span class="p">)</span>
+                <span class="c1"># Reject disconnected, empty, or degenerate products</span>
+                <span class="k">if</span> <span class="n">m</span><span class="o">.</span><span class="n">GetNumBonds</span><span class="p">()</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="k">continue</span>
+                <span class="k">if</span> <span class="n">m</span><span class="o">.</span><span class="n">GetNumHeavyAtoms</span><span class="p">()</span> <span class="o">&lt;</span> <span class="mi">4</span><span class="p">:</span>
+                    <span class="k">continue</span>
+                <span class="k">if</span> <span class="s2">&quot;.&quot;</span> <span class="ow">in</span> <span class="n">Chem</span><span class="o">.</span><span class="n">MolToSmiles</span><span class="p">(</span><span class="n">m</span><span class="p">):</span>
+                    <span class="k">continue</span>
+                <span class="n">products</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">m</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+                <span class="k">pass</span>
+    <span class="k">return</span> <span class="n">products</span>
+
+
+<div class="viewcode-block" id="mol_cleaner">
+<a class="viewcode-back" href="../../api/protect.html#lacan.protect.mol_cleaner">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">mol_cleaner</span><span class="p">(</span><span class="n">mol</span><span class="p">,</span> <span class="n">profile</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">score_threshold</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">t</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span> <span class="n">max_iter</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
+                <span class="n">lateral_patience</span><span class="o">=</span><span class="mi">5</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Iteratively mutate a molecule to eliminate all LACAN bond violations.</span>
+
+<span class="sd">    This function is designed for molecules that mostly pass the LACAN profile</span>
+<span class="sd">    but have one or more bad bond environments that need to be fixed.  It</span>
+<span class="sd">    freezes the parts that already pass (using bond protection) and mutates</span>
+<span class="sd">    only the failing regions.</span>
+
+<span class="sd">    Strategy</span>
+<span class="sd">    --------</span>
+<span class="sd">    Each iteration the cleaner:</span>
+
+<span class="sd">    1. Generates **all** single-step mutation products via :func:`_raw_mutations`</span>
+<span class="sd">       — crucially *without* score-filtering the products.  Score-filtering at</span>
+<span class="sd">       this stage would reject all partially-fixed intermediates (those that</span>
+<span class="sd">       still have some bad bonds), preventing multi-step repair paths.</span>
+
+<span class="sd">    2. Evaluates each product by counting its unprotected LACAN violations.</span>
+<span class="sd">       The parent molecule&#39;s protected bond mask is re-derived from the</span>
+<span class="sd">       *product&#39;s own* bond scores (via :func:`_reprotect`), so each candidate</span>
+<span class="sd">       is assessed on its own bond landscape.</span>
+
+<span class="sd">    3. Picks the best candidate:</span>
+
+<span class="sd">       * **Improvement step** — a candidate with fewer violations than the</span>
+<span class="sd">         current molecule.  Resets the lateral counter.</span>
+<span class="sd">       * **Lateral move** — if no improvement is available and the lateral</span>
+<span class="sd">         patience budget allows, accept the highest-scoring candidate with the</span>
+<span class="sd">         *same* violation count.  This is essential for molecules with multiple</span>
+<span class="sd">         independent violations: a lateral move on one region can reposition</span>
+<span class="sd">         bad bonds to a state where the *next* mutation fixes one of them.</span>
+
+<span class="sd">    4. Re-protects the accepted candidate&#39;s newly-passing bonds so subsequent</span>
+<span class="sd">       mutations stay focused on the remaining bad regions.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    mol              : RDKit Mol to clean</span>
+<span class="sd">    profile          : LACAN profile dict (loads ChEMBL default if None)</span>
+<span class="sd">    score_threshold  : final LACAN score required to consider the molecule clean</span>
+<span class="sd">                       (default 0.5)</span>
+<span class="sd">    t                : bond score threshold used throughout (default 0.05)</span>
+<span class="sd">    max_iter         : hard cap on total iterations (default 100)</span>
+<span class="sd">    lateral_patience : consecutive lateral steps allowed before giving up</span>
+<span class="sd">                       (default 5)</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    RDKit Mol if a clean version is found, else None.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">profile</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">profile</span> <span class="o">=</span> <span class="n">lacan</span><span class="o">.</span><span class="n">load_profile</span><span class="p">(</span><span class="s2">&quot;chembl&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Minimum heavy-atom count: never accept a product smaller than this.</span>
+    <span class="c1"># Atom-deletion mutations are legitimate but shouldn&#39;t collapse the molecule.</span>
+    <span class="n">min_heavy</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="n">mol</span><span class="o">.</span><span class="n">GetNumHeavyAtoms</span><span class="p">()</span> <span class="o">-</span> <span class="mi">6</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_reprotect</span><span class="p">(</span><span class="n">m</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Freeze currently-passing bonds so only bad regions stay mutable.&quot;&quot;&quot;</span>
+        <span class="n">apb</span> <span class="o">=</span> <span class="n">lacan</span><span class="o">.</span><span class="n">assess_per_bond</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">profile</span><span class="p">)</span>
+        <span class="n">good</span> <span class="o">=</span> <span class="p">[</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">sc</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">apb</span><span class="p">)</span> <span class="k">if</span> <span class="n">sc</span> <span class="o">&gt;=</span> <span class="n">t</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">protect_bonds_for_idx</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">good</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_eval</span><span class="p">(</span><span class="n">m</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return (n_violations, score) for a molecule with bond protection set.</span>
+<span class="sd">        Returns (999, 0.0) for degenerate molecules (no bonds).&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">m</span><span class="o">.</span><span class="n">GetNumBonds</span><span class="p">()</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="mi">999</span><span class="p">,</span> <span class="mf">0.0</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">info</span> <span class="o">=</span> <span class="n">score_mol_ignoring_protected_bonds</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">profile</span><span class="p">,</span> <span class="n">t</span><span class="o">=</span><span class="n">t</span><span class="p">)</span>
+        <span class="n">s</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">score_mol_ignoring_protected_bonds</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">profile</span><span class="p">,</span> <span class="n">t</span><span class="o">=</span><span class="n">t</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="n">info</span><span class="p">[</span><span class="s2">&quot;bad_bonds&quot;</span><span class="p">]),</span> <span class="n">s</span>
+
+    <span class="c1"># Initialise: freeze all currently-passing bonds</span>
+    <span class="n">working_mol</span> <span class="o">=</span> <span class="n">_reprotect</span><span class="p">(</span><span class="n">mol</span><span class="p">)</span>
+    <span class="n">current_v</span><span class="p">,</span> <span class="n">current_s</span> <span class="o">=</span> <span class="n">_eval</span><span class="p">(</span><span class="n">working_mol</span><span class="p">)</span>
+
+    <span class="n">lateral_count</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">visited_smis</span> <span class="o">=</span> <span class="p">{</span><span class="n">Chem</span><span class="o">.</span><span class="n">MolToSmiles</span><span class="p">(</span><span class="n">working_mol</span><span class="p">)}</span>
+
+    <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">max_iter</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">current_v</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">current_s</span> <span class="o">&gt;=</span> <span class="n">score_threshold</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">working_mol</span>
+
+        <span class="c1"># Generate raw products — NO score filtering so partials are kept</span>
+        <span class="n">candidates</span> <span class="o">=</span> <span class="n">_raw_mutations</span><span class="p">(</span><span class="n">working_mol</span><span class="p">,</span> <span class="n">profile</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">candidates</span><span class="p">:</span>
+            <span class="k">break</span>
+
+        <span class="n">best_improve_v</span> <span class="o">=</span> <span class="n">current_v</span>
+        <span class="n">best_improve_s</span> <span class="o">=</span> <span class="o">-</span><span class="mf">1.0</span>
+        <span class="n">best_improve_mol</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">best_lateral_s</span> <span class="o">=</span> <span class="o">-</span><span class="mf">1.0</span>
+        <span class="n">best_lateral_mol</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">candidates</span><span class="p">:</span>
+            <span class="c1"># Skip molecules that have shrunk too much</span>
+            <span class="k">if</span> <span class="n">c</span><span class="o">.</span><span class="n">GetNumHeavyAtoms</span><span class="p">()</span> <span class="o">&lt;</span> <span class="n">min_heavy</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="n">smi</span> <span class="o">=</span> <span class="n">Chem</span><span class="o">.</span><span class="n">MolToSmiles</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">smi</span> <span class="ow">in</span> <span class="n">visited_smis</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="c1"># Re-protect the candidate on its own bond scores</span>
+            <span class="n">c_prot</span> <span class="o">=</span> <span class="n">_reprotect</span><span class="p">(</span><span class="n">c</span><span class="p">)</span>
+            <span class="n">v</span><span class="p">,</span> <span class="n">s</span> <span class="o">=</span> <span class="n">_eval</span><span class="p">(</span><span class="n">c_prot</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">v</span> <span class="o">&lt;</span> <span class="n">best_improve_v</span> <span class="ow">or</span> <span class="p">(</span><span class="n">v</span> <span class="o">==</span> <span class="n">best_improve_v</span> <span class="ow">and</span> <span class="n">s</span> <span class="o">&gt;</span> <span class="n">best_improve_s</span><span class="p">):</span>
+                <span class="n">best_improve_v</span> <span class="o">=</span> <span class="n">v</span>
+                <span class="n">best_improve_s</span> <span class="o">=</span> <span class="n">s</span>
+                <span class="n">best_improve_mol</span> <span class="o">=</span> <span class="n">c_prot</span>
+
+            <span class="k">if</span> <span class="n">v</span> <span class="o">==</span> <span class="n">current_v</span> <span class="ow">and</span> <span class="n">s</span> <span class="o">&gt;</span> <span class="n">best_lateral_s</span><span class="p">:</span>
+                <span class="n">best_lateral_s</span> <span class="o">=</span> <span class="n">s</span>
+                <span class="n">best_lateral_mol</span> <span class="o">=</span> <span class="n">c_prot</span>
+
+        <span class="k">if</span> <span class="n">best_improve_mol</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">best_improve_v</span> <span class="o">&lt;</span> <span class="n">current_v</span><span class="p">:</span>
+            <span class="n">visited_smis</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">Chem</span><span class="o">.</span><span class="n">MolToSmiles</span><span class="p">(</span><span class="n">best_improve_mol</span><span class="p">))</span>
+            <span class="n">working_mol</span> <span class="o">=</span> <span class="n">best_improve_mol</span>
+            <span class="n">current_v</span> <span class="o">=</span> <span class="n">best_improve_v</span>
+            <span class="n">current_s</span> <span class="o">=</span> <span class="n">best_improve_s</span>
+            <span class="n">lateral_count</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">elif</span> <span class="n">best_lateral_mol</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">lateral_count</span> <span class="o">&lt;</span> <span class="n">lateral_patience</span><span class="p">:</span>
+            <span class="n">visited_smis</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">Chem</span><span class="o">.</span><span class="n">MolToSmiles</span><span class="p">(</span><span class="n">best_lateral_mol</span><span class="p">))</span>
+            <span class="n">working_mol</span> <span class="o">=</span> <span class="n">best_lateral_mol</span>
+            <span class="n">current_s</span> <span class="o">=</span> <span class="n">best_lateral_s</span>
+            <span class="n">lateral_count</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">break</span>
+
+    <span class="n">final_score</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">score_mol_ignoring_protected_bonds</span><span class="p">(</span><span class="n">working_mol</span><span class="p">,</span> <span class="n">profile</span><span class="p">,</span> <span class="n">t</span><span class="o">=</span><span class="n">t</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">working_mol</span> <span class="k">if</span> <span class="n">final_score</span> <span class="o">&gt;=</span> <span class="n">score_threshold</span> <span class="k">else</span> <span class="kc">None</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, LACAN contributors.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

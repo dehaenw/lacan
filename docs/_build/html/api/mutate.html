@@ -1,0 +1,216 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>lacan.mutate &mdash; LACAN 1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=f2a433a1"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="lacan.protect" href="protect.html" />
+    <link rel="prev" title="lacan.replace" href="replace.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            LACAN
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="lacan.html">lacan.lacan</a></li>
+<li class="toctree-l1"><a class="reference internal" href="gen.html">lacan.gen</a></li>
+<li class="toctree-l1"><a class="reference internal" href="replace.html">lacan.replace</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">lacan.mutate</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#protection">Protection</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#multiprocessing">Multiprocessing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#lacan.mutate.mutate_smarts"><code class="docutils literal notranslate"><span class="pre">mutate_smarts</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#lacan.mutate.mutate_ops"><code class="docutils literal notranslate"><span class="pre">mutate_ops</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#lacan.mutate.apply_mutations_mols"><code class="docutils literal notranslate"><span class="pre">apply_mutations_mols()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#lacan.mutate.apply_mutations"><code class="docutils literal notranslate"><span class="pre">apply_mutations()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="protect.html">lacan.protect</a></li>
+<li class="toctree-l1"><a class="reference internal" href="breed.html">lacan.breed</a></li>
+<li class="toctree-l1"><a class="reference internal" href="decompose.html">lacan.decompose</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">LACAN</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">lacan.mutate</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/api/mutate.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-lacan.mutate">
+<span id="lacan-mutate"></span><h1>lacan.mutate<a class="headerlink" href="#module-lacan.mutate" title="Link to this heading"></a></h1>
+<p>mutate.py — Atom-level mutation operations for LACAN.</p>
+<p>This module provides fine-grained single-step mutations: adding, removing, or
+changing individual atoms, bonds, or ring sizes.  These are the EXPLOIT
+operations in the adaptive GA.</p>
+<p>Each reaction in <code class="docutils literal notranslate"><span class="pre">mutate_smarts</span></code> targets a specific chemotype change.
+The dictionary is compiled into <code class="docutils literal notranslate"><span class="pre">mutate_ops</span></code> (RDKit Reaction objects) at
+import time.</p>
+<section id="protection">
+<h2>Protection<a class="headerlink" href="#protection" title="Link to this heading"></a></h2>
+<p>Before running any reaction, <a class="reference internal" href="#lacan.mutate.apply_mutations" title="lacan.mutate.apply_mutations"><code class="xref py py-func docutils literal notranslate"><span class="pre">apply_mutations()</span></code></a> calls
+<a class="reference internal" href="protect.html#lacan.protect.reaction_touches_protected" title="lacan.protect.reaction_touches_protected"><code class="xref py py-func docutils literal notranslate"><span class="pre">reaction_touches_protected()</span></code></a> to check whether the
+reaction’s SMARTS template would match a protected atom.  If so, the entire
+reaction is skipped for that molecule.</p>
+</section>
+<section id="multiprocessing">
+<h2>Multiprocessing<a class="headerlink" href="#multiprocessing" title="Link to this heading"></a></h2>
+<p>Molecule atom/bond properties (including protection marks stored under the
+<code class="docutils literal notranslate"><span class="pre">_lp</span></code> property) would normally be lost when RDKit Mol objects are pickled
+for <code class="docutils literal notranslate"><span class="pre">multiprocessing.Pool</span></code>.  <a class="reference internal" href="#lacan.mutate.apply_mutations_mols" title="lacan.mutate.apply_mutations_mols"><code class="xref py py-func docutils literal notranslate"><span class="pre">apply_mutations_mols()</span></code></a> works around this
+by serialising mols to SDF block strings (which preserve properties) before
+dispatching to worker processes.</p>
+</section>
+<dl class="py data">
+<dt class="sig sig-object py" id="lacan.mutate.mutate_smarts">
+<span class="sig-prename descclassname"><span class="pre">lacan.mutate.</span></span><span class="sig-name descname"><span class="pre">mutate_smarts</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'addBr':</span> <span class="pre">'[H1,H2,H3:0]&gt;&gt;[*:0][Br]',</span> <span class="pre">'addC':</span> <span class="pre">'[H1,H2,H3:0]&gt;&gt;[*:0][CH3]',</span> <span class="pre">'addCO':</span> <span class="pre">'[CH2:0]&gt;&gt;[*:0]=[O]',</span> <span class="pre">'addCl':</span> <span class="pre">'[H1,H2,H3:0]&gt;&gt;[*:0][Cl]',</span> <span class="pre">'addF':</span> <span class="pre">'[H1,H2,H3:0]&gt;&gt;[*:0][F]',</span> <span class="pre">'addN':</span> <span class="pre">'[H1,H2,H3:0]&gt;&gt;[*:0][NH2]',</span> <span class="pre">'addO':</span> <span class="pre">'[H1,H2,H3:0]&gt;&gt;[*:0][OH]',</span> <span class="pre">'aroCtoN':</span> <span class="pre">'[cH:0]&gt;&gt;[nH0:0]',</span> <span class="pre">'aroNtoC':</span> <span class="pre">'[nH0X2:0]&gt;&gt;[cH:0]',</span> <span class="pre">'arofuse5':</span> <span class="pre">'[aH1:0]:[a:1]-[*:2][*:3]-[!R;H1,H2,H3:4]&gt;&gt;[*:0]1~[*:1]~[*:2]~[*:3]~[*:4]1',</span> <span class="pre">'arofuse6na1':</span> <span class="pre">'[aH1:0]:[a:1]-[*:2][*:3][!a:4]-[!R;H1,H2,H3:5]&gt;&gt;[*:0]1~[*:1]~[*:2]~[*:3]~[*:4]~[*:5]1',</span> <span class="pre">'arofuse6na2':</span> <span class="pre">'[aH1:0]:[a:1]-[!a:2][*:3][*:4]-[!R;H1,H2,H3:5]&gt;&gt;[*:0]1~[*:1]~[*:2]~[*:3]~[*:4]~[*:5]1',</span> <span class="pre">'bond1to2':</span> <span class="pre">'[H1,H2,H3:0]-[H1,H2,H3:1]&gt;&gt;[*:0]=[*:1]',</span> <span class="pre">'bond2to1':</span> <span class="pre">'[A:0]=[A:1]&gt;&gt;[*:0]-[*:1]',</span> <span class="pre">'bond2to3':</span> <span class="pre">'[!R;H1,H2:0]=[!R;H1,H2:1]&gt;&gt;[*:0]#[*:1]',</span> <span class="pre">'bond3to2':</span> <span class="pre">'[*:0]#[*:1]&gt;&gt;[*:0]=[*:1]',</span> <span class="pre">'close3ring':</span> <span class="pre">'[!R;H1,H2,H3:0][*:1][!R;H1,H2,H3:2]&gt;&gt;[*:0]1~[*:1]~[*:2]1',</span> <span class="pre">'close4ring':</span> <span class="pre">'[!R;H1,H2,H3:0][*:1][*:2][!R;H1,H2,H3:3]&gt;&gt;[*:0]1~[*:1]~[*:2]~[*:3]1',</span> <span class="pre">'close5ring':</span> <span class="pre">'[!R;H1,H2,H3:0][*:1][*:2][!a:3][!R;H1,H2,H3:4]&gt;&gt;[*:0]1~[*:1]~[*:2]~[*:3]~[*:4]1',</span> <span class="pre">'close6ring1':</span> <span class="pre">'[!R;H1,H2,H3:0][*:1][*:2][!a:3][!a:4][!R;H1,H2,H3:5]&gt;&gt;[*:0]1~[*:1]~[*:2]~[*:3]~[*:4]~[*:5]1',</span> <span class="pre">'close6ring2':</span> <span class="pre">'[!R;H1,H2,H3:0][!a:1][*:2][*:3][!a:4][!R;H1,H2,H3:5]&gt;&gt;[*:0]1~[*:1]~[*:2]~[*:3]~[*:4]~[*:5]1',</span> <span class="pre">'contractAroNH':</span> <span class="pre">'[ar6:0]:[cH,nH0;r6:1]:[cH,nH0;r6:2]:[ar6:3]&gt;&gt;[*:0]:[nH]:[*:3].[*:1][*:2]',</span> <span class="pre">'contractAroO':</span> <span class="pre">'[ar6:0]:[cH,nH0;r6:1]:[cH,nH0;r6:2]:[ar6:3]&gt;&gt;[*:0]:[o]:[*:3].[*:1][*:2]',</span> <span class="pre">'contractAroS':</span> <span class="pre">'[ar6:0]:[cH,nH0;r6:1]:[cH,nH0;r6:2]:[ar6:3]&gt;&gt;[*:0]:[s]:[*:3].[*:1][*:2]',</span> <span class="pre">'deleteD1':</span> <span class="pre">'[!$([nX3]):0][d1:1]&gt;&gt;[*:0].[*:1]',</span> <span class="pre">'deleteD2':</span> <span class="pre">'[*:0][d2;A:1][*:2]&gt;&gt;[*:0][*:2].[*:1]',</span> <span class="pre">'expandAroCC':</span> <span class="pre">'[ar5:0]:[nH,o,s;r5:1]:[ar5:2]&gt;&gt;[*:0]:[cH]:[cH]:[*:2].[*:1]',</span> <span class="pre">'expandAroCN':</span> <span class="pre">'[ar5:0]:[nH,o,s;r5:1]:[ar5:2]&gt;&gt;[*:0]:[cH]:[n]:[*:2].[*:1]',</span> <span class="pre">'insertC':</span> <span class="pre">'[*:0]-[*:1]&gt;&gt;[*:0]-[CH2]-[*:1]',</span> <span class="pre">'insertN':</span> <span class="pre">'[*:0]-[*:1]&gt;&gt;[*:0]-[NH]-[*:1]',</span> <span class="pre">'insertO':</span> <span class="pre">'[*:0]-[*:1]&gt;&gt;[*:0]-[O]-[*:1]',</span> <span class="pre">'insertS':</span> <span class="pre">'[*:0]-[*:1]&gt;&gt;[*:0]-[S]-[*:1]',</span> <span class="pre">'openring':</span> <span class="pre">'[R]&#64;!:[R]&gt;&gt;([*:0].[*:1])',</span> <span class="pre">'replaceC':</span> <span class="pre">'[!C;A;d4,d3,d2,d1;v4,v3,v2,v1:0]&gt;&gt;[C:0]',</span> <span class="pre">'replaceN':</span> <span class="pre">'[!N;!$([CH0]);d3,d2,d1;A:0]&gt;&gt;[N:0]',</span> <span class="pre">'replaceO':</span> <span class="pre">'[!O;!$([CH0]);$([*](-[*])(-[*]));d2,d1;A:0]&gt;&gt;[O:0]',</span> <span class="pre">'replaceS':</span> <span class="pre">'[!S;!$([CH0]);$([*](-[*])(-[*]));d2,d1;A:0]&gt;&gt;[S:0]'}</span></em><a class="headerlink" href="#lacan.mutate.mutate_smarts" title="Link to this definition"></a></dt>
+<dd><p>Dictionary of named reaction SMARTS for single-step atom-level mutations.</p>
+<p>Covers: atom addition (C/O/N/F/Cl/Br), ring contraction/expansion (5↔6,
+heteroatom swaps), chain insertion (C/N/O/S), element replacement, aromatic
+C↔N swaps, ring opening/closure (3–6-membered), ring fusion, bond order
+changes (single/double/triple), and degree-1/2 atom deletion.</p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="lacan.mutate.mutate_ops">
+<span class="sig-prename descclassname"><span class="pre">lacan.mutate.</span></span><span class="sig-name descname"><span class="pre">mutate_ops</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{'addBr':</span> <span class="pre">&lt;rdkit.Chem.rdChemReactions.ChemicalReaction</span> <span class="pre">object&gt;,</span> <span class="pre">'addC':</span> <span class="pre">&lt;rdkit.Chem.rdChemReactions.ChemicalReaction</span> <span class="pre">object&gt;,</span> <span class="pre">'addCO':</span> <span class="pre">&lt;rdkit.Chem.rdChemReactions.ChemicalReaction</span> <span class="pre">object&gt;,</span> <span class="pre">'addCl':</span> <span class="pre">&lt;rdkit.Chem.rdChemReactions.ChemicalReaction</span> <span class="pre">object&gt;,</span> <span class="pre">'addF':</span> <span class="pre">&lt;rdkit.Chem.rdChemReactions.ChemicalReaction</span> <span class="pre">object&gt;,</span> <span class="pre">'addN':</span> <span class="pre">&lt;rdkit.Chem.rdChemReactions.ChemicalReaction</span> <span class="pre">object&gt;,</span> <span class="pre">'addO':</span> <span class="pre">&lt;rdkit.Chem.rdChemReactions.ChemicalReaction</span> <span class="pre">object&gt;,</span> <span class="pre">'aroCtoN':</span> <span class="pre">&lt;rdkit.Chem.rdChemReactions.ChemicalReaction</span> <span class="pre">object&gt;,</span> <span class="pre">'aroNtoC':</span> <span class="pre">&lt;rdkit.Chem.rdChemReactions.ChemicalReaction</span> <span class="pre">object&gt;,</span> <span class="pre">'arofuse5':</span> <span class="pre">&lt;rdkit.Chem.rdChemReactions.ChemicalReaction</span> <span class="pre">object&gt;,</span> <span class="pre">'arofuse6na1':</span> <span class="pre">&lt;rdkit.Chem.rdChemReactions.ChemicalReaction</span> <span class="pre">object&gt;,</span> <span class="pre">'arofuse6na2':</span> <span class="pre">&lt;rdkit.Chem.rdChemReactions.ChemicalReaction</span> <span class="pre">object&gt;,</span> <span class="pre">'bond1to2':</span> <span class="pre">&lt;rdkit.Chem.rdChemReactions.ChemicalReaction</span> <span class="pre">object&gt;,</span> <span class="pre">'bond2to1':</span> <span class="pre">&lt;rdkit.Chem.rdChemReactions.ChemicalReaction</span> <span class="pre">object&gt;,</span> <span class="pre">'bond2to3':</span> <span class="pre">&lt;rdkit.Chem.rdChemReactions.ChemicalReaction</span> <span class="pre">object&gt;,</span> <span class="pre">'bond3to2':</span> <span class="pre">&lt;rdkit.Chem.rdChemReactions.ChemicalReaction</span> <span class="pre">object&gt;,</span> <span class="pre">'close3ring':</span> <span class="pre">&lt;rdkit.Chem.rdChemReactions.ChemicalReaction</span> <span class="pre">object&gt;,</span> <span class="pre">'close4ring':</span> <span class="pre">&lt;rdkit.Chem.rdChemReactions.ChemicalReaction</span> <span class="pre">object&gt;,</span> <span class="pre">'close5ring':</span> <span class="pre">&lt;rdkit.Chem.rdChemReactions.ChemicalReaction</span> <span class="pre">object&gt;,</span> <span class="pre">'close6ring1':</span> <span class="pre">&lt;rdkit.Chem.rdChemReactions.ChemicalReaction</span> <span class="pre">object&gt;,</span> <span class="pre">'close6ring2':</span> <span class="pre">&lt;rdkit.Chem.rdChemReactions.ChemicalReaction</span> <span class="pre">object&gt;,</span> <span class="pre">'contractAroNH':</span> <span class="pre">&lt;rdkit.Chem.rdChemReactions.ChemicalReaction</span> <span class="pre">object&gt;,</span> <span class="pre">'contractAroO':</span> <span class="pre">&lt;rdkit.Chem.rdChemReactions.ChemicalReaction</span> <span class="pre">object&gt;,</span> <span class="pre">'contractAroS':</span> <span class="pre">&lt;rdkit.Chem.rdChemReactions.ChemicalReaction</span> <span class="pre">object&gt;,</span> <span class="pre">'deleteD1':</span> <span class="pre">&lt;rdkit.Chem.rdChemReactions.ChemicalReaction</span> <span class="pre">object&gt;,</span> <span class="pre">'deleteD2':</span> <span class="pre">&lt;rdkit.Chem.rdChemReactions.ChemicalReaction</span> <span class="pre">object&gt;,</span> <span class="pre">'expandAroCC':</span> <span class="pre">&lt;rdkit.Chem.rdChemReactions.ChemicalReaction</span> <span class="pre">object&gt;,</span> <span class="pre">'expandAroCN':</span> <span class="pre">&lt;rdkit.Chem.rdChemReactions.ChemicalReaction</span> <span class="pre">object&gt;,</span> <span class="pre">'insertC':</span> <span class="pre">&lt;rdkit.Chem.rdChemReactions.ChemicalReaction</span> <span class="pre">object&gt;,</span> <span class="pre">'insertN':</span> <span class="pre">&lt;rdkit.Chem.rdChemReactions.ChemicalReaction</span> <span class="pre">object&gt;,</span> <span class="pre">'insertO':</span> <span class="pre">&lt;rdkit.Chem.rdChemReactions.ChemicalReaction</span> <span class="pre">object&gt;,</span> <span class="pre">'insertS':</span> <span class="pre">&lt;rdkit.Chem.rdChemReactions.ChemicalReaction</span> <span class="pre">object&gt;,</span> <span class="pre">'openring':</span> <span class="pre">&lt;rdkit.Chem.rdChemReactions.ChemicalReaction</span> <span class="pre">object&gt;,</span> <span class="pre">'replaceC':</span> <span class="pre">&lt;rdkit.Chem.rdChemReactions.ChemicalReaction</span> <span class="pre">object&gt;,</span> <span class="pre">'replaceN':</span> <span class="pre">&lt;rdkit.Chem.rdChemReactions.ChemicalReaction</span> <span class="pre">object&gt;,</span> <span class="pre">'replaceO':</span> <span class="pre">&lt;rdkit.Chem.rdChemReactions.ChemicalReaction</span> <span class="pre">object&gt;,</span> <span class="pre">'replaceS':</span> <span class="pre">&lt;rdkit.Chem.rdChemReactions.ChemicalReaction</span> <span class="pre">object&gt;}</span></em><a class="headerlink" href="#lacan.mutate.mutate_ops" title="Link to this definition"></a></dt>
+<dd><p>Pre-compiled RDKit Reaction objects for all mutations in <code class="docutils literal notranslate"><span class="pre">mutate_smarts</span></code>.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="lacan.mutate.apply_mutations_mols">
+<span class="sig-prename descclassname"><span class="pre">lacan.mutate.</span></span><span class="sig-name descname"><span class="pre">apply_mutations_mols</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mols</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">score_threshold</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_jobs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-1</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/lacan/mutate.html#apply_mutations_mols"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#lacan.mutate.apply_mutations_mols" title="Link to this definition"></a></dt>
+<dd><p>Apply all mutations to a list of molecules, optionally in parallel.</p>
+<p>This is the batch version of <a class="reference internal" href="#lacan.mutate.apply_mutations" title="lacan.mutate.apply_mutations"><code class="xref py py-func docutils literal notranslate"><span class="pre">apply_mutations()</span></code></a>.  When <code class="docutils literal notranslate"><span class="pre">n_jobs</span> <span class="pre">!=</span> <span class="pre">1</span></code>
+it uses <code class="docutils literal notranslate"><span class="pre">multiprocessing.Pool</span></code> and serialises mols via SDF blocks to
+preserve atom/bond properties.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>mols</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em> of </em><em>RDKit Mol objects</em>)</p></li>
+<li><p><strong>p</strong> (<em>LACAN profile dict</em>)</p></li>
+<li><p><strong>score_threshold</strong> (<em>minimum LACAN score for output molecules</em>)</p></li>
+<li><p><strong>n_jobs</strong> (<em>number</em><em> of </em><em>parallel workers; -1 uses all CPU cores</em>)</p></li>
+<li><p><strong>mols</strong><strong>)</strong><strong>.</strong> (<em>Returns a flat list</em><em> of </em><em>RDKit Mol objects</em><em> (</em><em>all products from all input</em>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="lacan.mutate.apply_mutations">
+<span class="sig-prename descclassname"><span class="pre">lacan.mutate.</span></span><span class="sig-name descname"><span class="pre">apply_mutations</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mol</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">score_threshold</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'all'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/lacan/mutate.html#apply_mutations"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#lacan.mutate.apply_mutations" title="Link to this definition"></a></dt>
+<dd><p>Apply single-step atom-level mutations to a molecule and return passing variants.</p>
+<p>For each reaction in <code class="docutils literal notranslate"><span class="pre">mutate_ops</span></code> (or a randomly chosen one if
+<code class="docutils literal notranslate"><span class="pre">mode=&quot;random&quot;</span></code>):</p>
+<ol class="arabic simple">
+<li><p>Skip the reaction if it would touch a protected atom (checked via
+<a class="reference internal" href="protect.html#lacan.protect.reaction_touches_protected" title="lacan.protect.reaction_touches_protected"><code class="xref py py-func docutils literal notranslate"><span class="pre">reaction_touches_protected()</span></code></a>).</p></li>
+<li><p>Run the reaction on the molecule; sanitize each product.</p></li>
+<li><p>Score each product with <a class="reference internal" href="protect.html#lacan.protect.score_mol_ignoring_protected_bonds" title="lacan.protect.score_mol_ignoring_protected_bonds"><code class="xref py py-func docutils literal notranslate"><span class="pre">score_mol_ignoring_protected_bonds()</span></code></a>.</p></li>
+<li><p>Keep products whose score exceeds <code class="docutils literal notranslate"><span class="pre">score_threshold</span></code>.</p></li>
+</ol>
+<p>Deduplication is by InChIKey.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>mol</strong> (<em>RDKit Mol</em><em> (</em><em>may have protected atoms/bonds</em><em>)</em>)</p></li>
+<li><p><strong>p</strong> (<em>LACAN profile dict</em>)</p></li>
+<li><p><strong>score_threshold</strong> (<em>minimum LACAN score; set 0.0 to accept all LACAN-passing</em>) – products, 0.8 for stricter drug-likeness filtering</p></li>
+<li><p><strong>mode</strong> (<code class="docutils literal notranslate"><span class="pre">&quot;all&quot;</span></code> (try every reaction) or <code class="docutils literal notranslate"><span class="pre">&quot;random&quot;</span></code> (one random) – reaction)</p></li>
+<li><p><strong>objects.</strong> (<em>Returns a deduplicated list</em><em> of </em><em>RDKit Mol</em>)</p></li>
+</ul>
+</dd>
+</dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Products of reactions do <strong>not</strong> inherit the parent’s bond protection marks.
+This is intentional for normal use (the score filter selects good products),
+but <a class="reference internal" href="protect.html#lacan.protect.mol_cleaner" title="lacan.protect.mol_cleaner"><code class="xref py py-func docutils literal notranslate"><span class="pre">mol_cleaner()</span></code></a> bypasses this function in favour of
+<code class="xref py py-func docutils literal notranslate"><span class="pre">_raw_mutations()</span></code> to avoid discarding partial fixes.</p>
+</div>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="replace.html" class="btn btn-neutral float-left" title="lacan.replace" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="protect.html" class="btn btn-neutral float-right" title="lacan.protect" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Wim Dehaen.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

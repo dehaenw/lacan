@@ -1,0 +1,266 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>lacan.breed &mdash; LACAN 1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=f2a433a1"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="lacan.decompose" href="decompose.html" />
+    <link rel="prev" title="lacan.protect" href="protect.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            LACAN
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="lacan.html">lacan.lacan</a></li>
+<li class="toctree-l1"><a class="reference internal" href="gen.html">lacan.gen</a></li>
+<li class="toctree-l1"><a class="reference internal" href="replace.html">lacan.replace</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mutate.html">lacan.mutate</a></li>
+<li class="toctree-l1"><a class="reference internal" href="protect.html">lacan.protect</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">lacan.breed</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#algorithm">Algorithm</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#fallback">Fallback</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#lacan.breed.combine_frags"><code class="docutils literal notranslate"><span class="pre">combine_frags</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#lacan.breed.fragment_molecule"><code class="docutils literal notranslate"><span class="pre">fragment_molecule()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#lacan.breed.crossover_fragments"><code class="docutils literal notranslate"><span class="pre">crossover_fragments()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#lacan.breed.breed"><code class="docutils literal notranslate"><span class="pre">breed()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#lacan.breed.cross_breed_mols"><code class="docutils literal notranslate"><span class="pre">cross_breed_mols()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="decompose.html">lacan.decompose</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">LACAN</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">lacan.breed</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/api/breed.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-lacan.breed">
+<span id="lacan-breed"></span><h1>lacan.breed<a class="headerlink" href="#module-lacan.breed" title="Link to this heading"></a></h1>
+<p>breed.py — Molecular crossover via fragment-based recombination.</p>
+<p>This module implements the EXPLORE crossover operation used by the adaptive GA
+in gen.py.  Two molecules are cut at their non-ring bonds and their fragments
+are recombined: substituents from one molecule are attached to the core of the
+other, producing offspring that inherit structural features from both parents.</p>
+<section id="algorithm">
+<h2>Algorithm<a class="headerlink" href="#algorithm" title="Link to this heading"></a></h2>
+<ol class="arabic simple">
+<li><p><strong>Fragmentation</strong> (<a class="reference internal" href="#lacan.breed.fragment_molecule" title="lacan.breed.fragment_molecule"><code class="xref py py-func docutils literal notranslate"><span class="pre">fragment_molecule()</span></code></a>) — cut the molecule at <em>n</em>
+non-ring bonds in all combinations.  Keep only cuts that yield exactly <em>n</em>
+single-dummy substituents and one <em>n</em>-dummy core.</p></li>
+<li><p><strong>Recombination</strong> (<a class="reference internal" href="#lacan.breed.crossover_fragments" title="lacan.breed.crossover_fragments"><code class="xref py py-func docutils literal notranslate"><span class="pre">crossover_fragments()</span></code></a>) — randomly pair a core from
+one molecule with substituents from the other, fill all attachment points,
+and accept offspring that:</p>
+<ul class="simple">
+<li><p>pass the LACAN score threshold,</p></li>
+<li><p>have heavy-atom count in <code class="docutils literal notranslate"><span class="pre">[hacmin,</span> <span class="pre">hacmax]</span></code>,</p></li>
+<li><p>have a “balance ratio” (fraction of atoms from parent 2) in
+<code class="docutils literal notranslate"><span class="pre">[min_ratio,</span> <span class="pre">max_ratio]</span></code> — this ensures the offspring genuinely
+interpolates between the two parents rather than being almost identical
+to one of them.</p></li>
+</ul>
+</li>
+<li><p><strong>Deduplication</strong> by InChIKey — no duplicate offspring are returned.</p></li>
+</ol>
+</section>
+<section id="fallback">
+<h2>Fallback<a class="headerlink" href="#fallback" title="Link to this heading"></a></h2>
+<p>If three-cut fragmentation yields no substituents for a molecule (e.g. because
+it has fewer than three non-ring bonds), <a class="reference internal" href="#lacan.breed.breed" title="lacan.breed.breed"><code class="xref py py-func docutils literal notranslate"><span class="pre">breed()</span></code></a> falls back to two-cut
+fragmentation.  This behaviour is silent by default; set <code class="docutils literal notranslate"><span class="pre">debug=True</span></code> to
+print a message when the fallback fires.</p>
+</section>
+<dl class="py data">
+<dt class="sig sig-object py" id="lacan.breed.combine_frags">
+<span class="sig-prename descclassname"><span class="pre">lacan.breed.</span></span><span class="sig-name descname"><span class="pre">combine_frags</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;rdkit.Chem.rdChemReactions.ChemicalReaction</span> <span class="pre">object&gt;</span></em><a class="headerlink" href="#lacan.breed.combine_frags" title="Link to this definition"></a></dt>
+<dd><p>Join two dummy attachment points (any bond type).</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="lacan.breed.fragment_molecule">
+<span class="sig-prename descclassname"><span class="pre">lacan.breed.</span></span><span class="sig-name descname"><span class="pre">fragment_molecule</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mol</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/lacan/breed.html#fragment_molecule"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#lacan.breed.fragment_molecule" title="Link to this definition"></a></dt>
+<dd><p>this function takes a molecule and cuts it n times. the cuts that are
+retained are those that have n fragments with one dummy and 1 fragment
+with n dummies (“substituents and cores”)</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="lacan.breed.crossover_fragments">
+<span class="sig-prename descclassname"><span class="pre">lacan.breed.</span></span><span class="sig-name descname"><span class="pre">crossover_fragments</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">s1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">c1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">c2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">profile</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nmols</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">randomseed</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">123</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_steps</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hacmin</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hacmax</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">30</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_ratio</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.25</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_ratio</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.75</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/lacan/breed.html#crossover_fragments"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#lacan.breed.crossover_fragments" title="Link to this definition"></a></dt>
+<dd><p>Recombine substituents and cores from two molecules to produce offspring.</p>
+<p>At each step a coin-flip chooses which parent provides the core and which
+provides the substituents.  All attachment points of the core are filled
+with randomly sampled substituents, and the offspring is accepted if it
+passes the LACAN filter and size/ratio constraints.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">ratio</span></code> is <code class="docutils literal notranslate"><span class="pre">atoms_from_parent2</span> <span class="pre">/</span> <span class="pre">total_atoms</span></code>; restricting it to
+<code class="docutils literal notranslate"><span class="pre">[min_ratio,</span> <span class="pre">max_ratio]</span></code> ensures the offspring genuinely blends both
+parents rather than being almost identical to one.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>s1</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em> of </em><em>str — substituent SMILES from parents 1 and 2</em>)</p></li>
+<li><p><strong>s2</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em> of </em><em>str — substituent SMILES from parents 1 and 2</em>)</p></li>
+<li><p><strong>c1</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em> of </em><em>str — core SMILES from parents 1 and 2</em>)</p></li>
+<li><p><strong>c2</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em> of </em><em>str — core SMILES from parents 1 and 2</em>)</p></li>
+<li><p><strong>profile</strong> (<em>LACAN profile dict</em>)</p></li>
+<li><p><strong>nmols</strong> (<em>int — target number</em><em> of </em><em>offspring to produce</em><em> (</em><em>default 10</em><em>)</em>)</p></li>
+<li><p><strong>randomseed</strong> (<em>int — random seed for reproducibility</em><em> (</em><em>default 123</em><em>)</em>)</p></li>
+<li><p><strong>max_steps</strong> (<em>int — maximum sampling attempts before giving up</em><em> (</em><em>default 1000</em><em>)</em>)</p></li>
+<li><p><strong>hacmin</strong> (<em>int — minimum heavy-atom count</em><em> (</em><em>default 0</em><em>)</em>)</p></li>
+<li><p><strong>hacmax</strong> (<em>int — maximum heavy-atom count</em><em> (</em><em>default 30</em><em>)</em>)</p></li>
+<li><p><strong>min_ratio</strong> (<em>float — minimum parent-2 atom fraction</em><em> (</em><em>default 0.25</em><em>)</em>)</p></li>
+<li><p><strong>max_ratio</strong> (<em>float — maximum parent-2 atom fraction</em><em> (</em><em>default 0.75</em><em>)</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><em>list of RDKit Mol — deduplicated offspring (may be fewer than *nmols</em> if*</p></li>
+<li><p><em>max_steps is reached first)</em></p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="lacan.breed.breed">
+<span class="sig-prename descclassname"><span class="pre">lacan.breed.</span></span><span class="sig-name descname"><span class="pre">breed</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">m1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">m2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">profile</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nmols</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cuts</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hacrange</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(0.8,</span> <span class="pre">1.2)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">interprange</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(0.3,</span> <span class="pre">0.7)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">debug</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/lacan/breed.html#breed"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#lacan.breed.breed" title="Link to this definition"></a></dt>
+<dd><p>Cross two molecules and return a list of offspring molecules.</p>
+<p>Fragments both parents at <code class="docutils literal notranslate"><span class="pre">cuts</span></code> non-ring bonds, then calls
+<a class="reference internal" href="#lacan.breed.crossover_fragments" title="lacan.breed.crossover_fragments"><code class="xref py py-func docutils literal notranslate"><span class="pre">crossover_fragments()</span></code></a> to combine their pieces.  The heavy-atom count
+range for offspring is derived from the parents’ sizes via <code class="docutils literal notranslate"><span class="pre">hacrange</span></code>:
+<code class="docutils literal notranslate"><span class="pre">[hacrange[0]</span> <span class="pre">*</span> <span class="pre">min(n1,n2),</span> <span class="pre">hacrange[1]</span> <span class="pre">*</span> <span class="pre">max(n1,n2)]</span></code>.</p>
+<p>If three-cut fragmentation fails for either parent (too few non-ring bonds),
+the function silently falls back to two-cut fragmentation.  Set
+<code class="docutils literal notranslate"><span class="pre">debug=True</span></code> to see a message when this happens.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>m1</strong> (<em>RDKit Mol — parent molecules</em>)</p></li>
+<li><p><strong>m2</strong> (<em>RDKit Mol — parent molecules</em>)</p></li>
+<li><p><strong>profile</strong> (<em>LACAN profile dict</em>)</p></li>
+<li><p><strong>nmols</strong> (<em>int — number</em><em> of </em><em>offspring to request</em><em> (</em><em>default 10</em><em>)</em>)</p></li>
+<li><p><strong>cuts</strong> (<em>int — number</em><em> of </em><em>cuts to make in each parent</em><em> (</em><em>default 3</em><em>)</em>)</p></li>
+<li><p><strong>hacrange</strong> (<em>(</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>) </em><em>—</em><em> (</em><em>min_frac</em><em>, </em><em>max_frac</em><em>) </em><em>multiplied by parent</em>) – sizes to set the offspring heavy-atom count window</p></li>
+<li><p><strong>interprange</strong> (<em>(</em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em>) </em><em>—</em><em> (</em><em>min_ratio</em><em>, </em><em>max_ratio</em><em>) </em><em>fraction</em><em> of </em><em>atoms</em>) – from parent 2 (controls interpolation balance)</p></li>
+<li><p><strong>debug</strong> (<em>bool — if True</em><em>, </em><em>print a message when falling back to 2-cut</em>) – fragmentation (default False)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)">list</a> of RDKit Mol</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="lacan.breed.cross_breed_mols">
+<span class="sig-prename descclassname"><span class="pre">lacan.breed.</span></span><span class="sig-name descname"><span class="pre">cross_breed_mols</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mols</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">score_threshold</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nmols</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_jobs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">debug</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/lacan/breed.html#cross_breed_mols"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#lacan.breed.cross_breed_mols" title="Link to this definition"></a></dt>
+<dd><p>Apply <a class="reference internal" href="#lacan.breed.breed" title="lacan.breed.breed"><code class="xref py py-func docutils literal notranslate"><span class="pre">breed()</span></code></a> across an entire population in parallel.</p>
+<p>Each molecule in <em>mols</em> is paired with a randomly chosen partner from the
+same list, and <a class="reference internal" href="#lacan.breed.breed" title="lacan.breed.breed"><code class="xref py py-func docutils literal notranslate"><span class="pre">breed()</span></code></a> is called for each pair via a
+<code class="docutils literal notranslate"><span class="pre">multiprocessing.Pool</span></code>.  Workers always run with <code class="docutils literal notranslate"><span class="pre">debug=False</span></code>
+regardless of the caller’s <em>debug</em> flag, because worker processes cannot
+print to a Jupyter notebook.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>mols</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em> of </em><em>RDKit Mol — population to breed</em>)</p></li>
+<li><p><strong>p</strong> (<em>LACAN profile dict</em>)</p></li>
+<li><p><strong>score_threshold</strong> (passed through to <a class="reference internal" href="#lacan.breed.breed" title="lacan.breed.breed"><code class="xref py py-func docutils literal notranslate"><span class="pre">breed()</span></code></a> (currently unused there,) – kept for API consistency with other operations)</p></li>
+<li><p><strong>nmols</strong> (<em>int — offspring requested per pair</em><em> (</em><em>default 1</em><em>)</em>)</p></li>
+<li><p><strong>n_jobs</strong> (<em>int — parallel workers; -1 uses all CPU cores</em>)</p></li>
+<li><p><strong>debug</strong> (<em>bool — not forwarded to workers</em><em> (</em><em>see note above</em><em>)</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)">list</a> of RDKit Mol — flat list of all offspring from all pairs</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="protect.html" class="btn btn-neutral float-left" title="lacan.protect" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="decompose.html" class="btn btn-neutral float-right" title="lacan.decompose" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Wim Dehaen.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
