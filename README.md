@@ -1,98 +1,404 @@
-# LACAN
-LACAN filter: Leveraging adjacent co-ocurrence of atomic neighborhoods for molecular filtering
+# LACAN — Leveraging Adjacent Co-occurrence of Atomic Neighborhoods
 
-> "All sorts of things in the world behave like mirrors"
-> -Jacques Lacan
+LACAN is a cheminformatics toolkit for **scoring, mutating, and generating drug-like molecules** using a statistical model of chemical bond environments learned from ChEMBL. It is designed to be used as a library in generative chemistry pipelines, particularly in combination with a genetic algorithm (GA) that can optimise molecules toward any scoring function.
 
-Some molecular fragments are common, but they have the tendency not to occur together. For example, alkyloxy radicals are frequent motifs in medicinal chemistry datasets, whereas the linkage of both radicals into a peroxide is rather uncommon. Likewise, halides and amines are some of the most commonly occurring atomic neighborhoods, and yet their pairing results in the unstable and toxic haloamine motif. We apply this concept using co-occurences of ECFP2 like atomic neighborhoods at the bond interface, and leverage co-occurence patterns to construct a molecular filter that highlights uncommon linkages.
+---
 
-## Current version
+## Contents
 
-This is version 0.0.2alpha. This version is still experimental, and breaking changes are still expected. Several changes have been added since 0.0.1alpha, including a change to manually hash the environments instead of relying on hacky usage of the rdkit morgan fingerprint generator. Also introduced in this version is functionality for molecule generation. This is currently unoptimized and subject to change.
+- [How LACAN scores molecules](#how-lacan-scores-molecules)
+- [Repository layout](#repository-layout)
+- [Quick start](#quick-start)
+- [Module reference](#module-reference)
+- [The Genetic Algorithm](#the-genetic-algorithm)
+- [Fragment corpus and corpus biasing](#fragment-corpus-and-corpus-biasing)
+- [Protected atoms and bonds](#protected-atoms-and-bonds)
+- [Example notebooks](#example-notebooks)
+- [Running the tests](#running-the-tests)
 
-## Installation
+---
 
-clone this repo, activate your environment, navigate to root dir and run:
+## How LACAN scores molecules
+
+LACAN asks: *how likely is each bond in this molecule, given the chemical environment on either side?*
+
+For every bond, LACAN computes a pair of **ECFP2-like atom identifiers** — one for each endpoint. The identifier encodes atomic number, degree, hydrogen count, formal charge, and smallest ring size, hashed to a 32-bit integer. The two integers are sorted into a *bond pair*.
+
+A **profile** (e.g. `chembl.pickle`) stores:
+- `idx` — how often each atom environment appears across the training set
+- `pairs` — how often each bond-pair co-occurs
+- `setsize` — total number of bonds in the training set
+
+The score for a single bond is the ratio of observed to expected co-occurrence (pointwise mutual information):
 
 ```
-pip install .
+observed  = pairs[(env1, env2)] / setsize
+expected  = (idx[env1] / setsize / 2) × (idx[env2] / setsize / 2)
+bond PMI  = observed / expected
 ```
+
+The molecule-level score uses the *minimum* per-bond PMI:
+
+```
+mol_score = min(0.5 × (min_bond_PMI / threshold)^0.5, 1.0)
+```
+
+A molecule scores exactly 0.5 when its worst bond is right at the threshold `t` (default 0.05), and 1.0 when all bonds are comfortably above it.
+
+---
+
+## Repository layout
+
+```
+lacan/
+├── lacan.py          # Scoring: mol_to_pairs, assess_per_bond, score_mol, load_profile
+├── mutate.py         # Atom-level mutations (40+ reaction SMARTS)
+├── replace.py        # Coarse fragment ops: ring/substituent/linker replacement,
+│                     # scaffold decoration. Conservative similarity-biased sampling.
+├── breed.py          # Crossover: fragment two molecules and recombine
+├── gen.py            # Random generation, corpus biasing, adaptive GA
+├── protect.py        # Protected atoms/bonds, mol_cleaner
+├── decompose.py      # Molecule fragmentation into rings/linkers/substituents
+├── data/
+│   ├── chembl.pickle # Default LACAN profile (~27M bonds from ChEMBL)
+│   └── rls.csv       # Fragment corpus (ring/linker/substituent library)
+└── example_notebooks/
+    ├── generate_molecules.ipynb
+    ├── protection_and_replacements.ipynb
+    ├── mutating_molecules.ipynb
+    ├── evaluate_bonds.ipynb
+    └── median_molecules.ipynb
+tests/
+├── conftest.py
+├── test_lacan.py
+├── test_decompose.py
+├── test_mutate.py
+├── test_protect.py
+└── test_replace.py
+```
+
+---
+
+## Quick start
+
+```python
+from rdkit import Chem
+from lacan import lacan, gen, mutate, replace
+
+profile = lacan.load_profile("chembl")
+
+# Score a molecule
+mol = Chem.MolFromSmiles("CCCc1nn(C)c2c(=O)[nH]c(-c3cc(S(=O)(=O)N4CCN(C)CC4)ccc3OCC)nc12")
+score, info = lacan.score_mol(mol, profile)
+print(f"Score: {score:.3f}, bad bonds: {info['bad_bonds']}")
+
+# Generate drug-like molecules
+mols = gen.generate_filtered_molecules(profile, n_molecules=10, min_atoms=20, n_jobs=-1)
+
+# Mutate
+variants = mutate.apply_mutations(mol, profile, score_threshold=0.8)
+
+# Replace ring system
+ring_vars = replace.replace_ring(mol, profile, score_threshold=0.5, n_replacements=50)
+```
+
+---
+
+## Module reference
+
+### `lacan.py` — scoring
+
+| Function | Description |
+|---|---|
+| `load_profile(name)` | Load a pickled profile from `data/<name>.pickle` |
+| `score_mol(mol, profile, mode, t)` | Score a molecule; returns `(score, info)` |
+| `assess_per_bond(mol, profile)` | Per-bond PMI scores as a list |
+| `mol_to_pairs(mol)` | Bond-pair identifiers for all bonds |
+| `get_profile_for_mols(suppl, name, n_jobs)` | Build and save a new profile from a molecule set |
+
+### `mutate.py` — mutations
+
+`apply_mutations(mol, profile, score_threshold, mode="all")` applies 40+ reaction SMARTS and returns LACAN-passing variants. Modes: `"all"` (try every reaction) or `"random"` (one randomly chosen).
+
+`apply_mutations_mols(mols, profile, score_threshold, n_jobs=-1)` parallelises over a list. Molecule properties (including protection marks) survive multiprocessing via SDF serialisation.
+
+Protected atoms are respected: any reaction whose template matches a protected atom is skipped.
+
+### `replace.py` — fragment operations
+
+Coarse structural operations. All accept `conservative=True` (default), which biases replacement fragment selection toward structurally similar alternatives using Morgan fingerprint Tanimoto similarity:
+
+```
+weight = occurrence_count^0.5 × (1 + 2 × tanimoto_to_original)
+```
+
+| Function | Operation |
+|---|---|
+| `replace_ring(mol, p, score_threshold, conservative)` | Swap a ring system |
+| `replace_substituent(mol, p, score_threshold, conservative)` | Replace a non-ring substituent |
+| `replace_linker(mol, p, score_threshold, conservative)` | Replace the chain linking two rings |
+| `decorate_scaffold(mol, p, score_threshold, mode)` | Add substituents to free positions |
+
+Protected rings/atoms are skipped. `replace_linker` returns empty if no linker exists.
+
+### `breed.py` — crossover
+
+`breed(m1, m2, profile, nmols, debug=False)` cuts both molecules at non-ring bonds, then recombines substituents from one with the core from the other. Set `debug=True` to see fallback messages when 3-cut fragmentation isn't possible.
+
+### `gen.py` — generation and GA
+
+| Function | Description |
+|---|---|
+| `generate_filtered_molecules(profile, n_molecules, n_jobs, ...)` | Generate N random drug-like molecules |
+| `bias_corpus(mols, ratio=2.0)` | Build a corpus biased toward reference chemistry |
+| `generate_optimized_molecules(scoring_fn, profile, ...)` | Run the adaptive GA |
+
+### `protect.py` — atom and bond protection
+
+See [Protected atoms and bonds](#protected-atoms-and-bonds) below.
+
+### `decompose.py` — fragmentation
+
+`decompose_molecule(smiles)` breaks a molecule into rings, linkers, and substituents. Returns `(rings, linkers, substituents)` as lists of SMARTS strings.
+
+`get_corpus(mols)` extracts fragment counts from a list of molecules in corpus format.
+
+---
+
+## The Genetic Algorithm
+
+`generate_optimized_molecules` implements an adaptive GA that switches between exploration and exploitation each generation based on two signals about the population.
+
+### Parameters
+
+```python
+winners = gen.generate_optimized_molecules(
+    scoring_function,       # callable: list[Mol] → list[float]
+    profile,                # LACAN profile dict
+    seed=123,
+    startN=50,              # initial random population size
+    generations=10,         # number of generations to run
+    popsize=20,             # max active pool size per generation
+    win_threshold=0.8,      # score threshold to collect a molecule as a "winner"
+    sim_threshold=0.45,     # Tanimoto cutoff — winners more similar than this are deduped
+    higher_is_better=True,  # set False for minimisation (e.g. docking energy)
+    diversity_threshold=0.4,# mean pairwise Tanimoto below this → force EXPLORE
+    plateau_patience=3,     # consecutive gens without improvement → force EXPLORE
+    explore_ratio=0.5,      # fraction of budget for exploration when freely choosing
+    conservative=True,      # similarity-biased fragment selection in EXPLORE
+    quiet=False,            # suppress per-generation progress output
+    fragcorpus=entries,     # fragment corpus (use bias_corpus() to customise)
+)
+# Returns: list of (smiles, score) sorted by score
+```
+
+### Decision logic per generation
+
+The GA computes two signals each generation:
+
+| Signal | How computed | Meaning |
+|---|---|---|
+| **diversity** | Mean pairwise Tanimoto distance of the pool | Low → population has converged, need big structural jumps |
+| **plateau** | Consecutive gens without pool score improving | High → stuck in local optimum, need new chemotypes |
+
+Mode selection:
+
+```
+diversity < diversity_threshold   →  EXPLORE
+OR plateau >= plateau_patience    →  EXPLORE
+otherwise                         →  EXPLOIT
+```
+
+### Flowchart
+
+```
+┌─────────────────────────────────────────────────┐
+│  START: generate startN random molecules        │
+│         score all → split into winners / pool   │
+└──────────────────┬──────────────────────────────┘
+                   │
+          ┌────────▼────────┐
+          │  for each gen   │◄────────────────────────┐
+          └────────┬────────┘                         │
+                   │                                  │
+       ┌───────────▼────────────┐                     │
+       │  diversity < threshold │                     │
+       │    OR plateau hit?     │                     │
+       └──────┬─────────┬───────┘                     │
+              │ YES     │ NO                           │
+       EXPLORE▼         ▼EXPLOIT                      │
+  ring/sub/linker    mutations                         │
+  decoration         (fine-grained)                   │
+  crossover          + small explore                  │
+  +fresh randoms       component                      │
+              │         │                             │
+              └────┬────┘                             │
+                   │                                  │
+          ┌────────▼────────────┐                     │
+          │  score new mols     │                     │
+          │  update winners     │                     │
+          │  cull pool to       │                     │
+          │  popsize by score   │                     │
+          └────────┬────────────┘                     │
+                   │                                  │
+          ┌────────▼────────┐                         │
+          │  more gens?     ├─ YES ───────────────────┘
+          └────────┬────────┘
+                   │ NO
+          ┌────────▼────────┐
+          │  return winners │
+          └─────────────────┘
+```
+
+### EXPLORE mode
+
+Uses coarse fragment operations from `replace.py`:
+- Ring system replacement
+- Substituent replacement
+- Linker replacement
+- Scaffold decoration
+
+Plus crossover from `breed.py` and fresh random molecules. Makes large structural jumps — good for escaping local optima and finding new chemotypes. Fragment selection is similarity-biased when `conservative=True`.
+
+### EXPLOIT mode
+
+Uses fine-grained atom-level mutations from `mutate.py` (add/remove atoms, change elements, open/close rings, change bond orders, etc.). Makes small precise changes to refine good leads. Fast, so efficient for both slow and fast scoring functions.
+
+Even during EXPLOIT, a fraction of parents (`explore_ratio × 0.5`) also go through the EXPLORE step, preventing full convergence.
+
+### Tuning for scoring function speed
+
+**Fast scoring (QSAR, fingerprint similarity):** use large populations, standard ratios.
+```python
+gen.generate_optimized_molecules(score_fn, profile,
+    startN=40, popsize=30, generations=20,
+    diversity_threshold=0.4, plateau_patience=2, explore_ratio=0.5)
+```
+
+**Slow scoring (docking, 3D shape alignment):** use small populations, favour exploration.
+```python
+gen.generate_optimized_molecules(dock_fn, profile,
+    startN=6, popsize=4, generations=15,
+    diversity_threshold=0.5, plateau_patience=2, explore_ratio=0.7)
+```
+
+### Corpus biasing (transfer learning)
+
+```python
+actives = [Chem.MolFromSmiles(s) for s in active_smiles]
+biased = gen.bias_corpus(actives, ratio=3.0)  # 3× weight for active fragments
+winners = gen.generate_optimized_molecules(score_fn, profile, fragcorpus=biased)
+```
+
+`ratio=1` is neutral (equal weighting with background ChEMBL), `ratio=3` strongly steers toward the reference chemotype. Fragments not seen in the reference set are still present in the corpus at their original ChEMBL frequency, so the GA can still explore outside the reference chemistry if needed.
+
+---
+
+## Fragment corpus and corpus biasing
+
+The fragment corpus (`data/rls.csv`) contains ring systems, linkers, and substituents extracted from ChEMBL, with occurrence counts.
+
+| Field | Meaning |
+|---|---|
+| smiles | Fragment SMILES with `*` dummy atoms at attachment points |
+| count | Occurrences in ChEMBL |
+| degree | Number of attachment points |
+| ftype | `Ring`, `Linker`, or `Sub` |
+| bonds | Bond types at attachment points (`-`, `=`, `--`, etc.) |
+
+Only fragments with count > 200 are loaded. Sampling weights default to `count^0.5`.
+
+`bias_corpus(mols, ratio)` decomposes reference molecules, counts their fragments, and merges them into the background corpus with counts multiplied by `ratio`. The result can be passed as `fragcorpus=` to any generation or GA function.
+
+---
+
+## Protected atoms and bonds
+
+### Protected atoms
+
+Protected atoms are skipped by all mutation and replacement operations.
+
+```python
+from lacan.protect import (
+    protect_atoms_for_idx, protect_atoms_matching_smarts,
+    unprotect_atoms_for_idx, unprotect_atoms_all
+)
+
+# Lock the ring — only the side chain will be touched
+mol = protect_atoms_matching_smarts(mol, "c1ccccc1")
+variants = mutate.apply_mutations(mol, profile, score_threshold=0.8)
+mol = unprotect_atoms_all(mol)
+```
+
+### Protected bonds
+
+Protected bonds are excluded from LACAN scoring. Use this when a molecule contains a required but chemically unusual motif (e.g. a Michael acceptor warhead in a covalent drug):
+
+```python
+from lacan.protect import protect_rejected_bonds, score_mol_ignoring_protected_bonds
+
+mol = protect_rejected_bonds(mol, profile)  # auto-protect failing bonds
+score, info = score_mol_ignoring_protected_bonds(mol, profile)
+```
+
+### mol_cleaner
+
+Iteratively mutates a molecule to eliminate LACAN violations while freezing the parts that already pass.
+
+**Key feature — lateral moves:** if no single mutation reduces the number of bad bonds, the cleaner accepts a lateral move (same count, different bonds) to reposition violations and potentially enable a subsequent improvement. This is essential for molecules with multiple independent violations.
+
+```python
+from lacan.protect import mol_cleaner
+
+cleaned = mol_cleaner(mol, profile,
+    score_threshold=0.5,
+    max_iter=100,
+    lateral_patience=5)   # allow up to 5 lateral steps before giving up
+```
+
+### Full API
+
+| Function | Description |
+|---|---|
+| `protect_atoms_for_idx(mol, indices)` | Protect by atom index |
+| `protect_atoms_matching_smarts(mol, smarts)` | Protect by SMARTS |
+| `unprotect_atoms_for_idx(mol, indices)` | Unprotect specific atoms |
+| `unprotect_atoms_all(mol)` | Remove all atom protection |
+| `protect_bonds_for_idx(mol, indices)` | Protect bonds by index |
+| `protect_rejected_bonds(mol, profile)` | Auto-protect LACAN-failing bonds |
+| `get_protected_atom_indices(mol)` | Query protected atom indices |
+| `get_protected_bond_indices(mol)` | Query protected bond indices |
+| `score_mol_ignoring_protected_bonds(mol, profile)` | Score excluding protected bonds |
+| `mol_cleaner(mol, profile, ...)` | Iterative violation fixer with lateral moves |
+
+All functions return new molecules — originals are never modified.
+
+---
 
 ## Example notebooks
-Some notebooks with typical use cases are provided in `lacan/example_notebooks`. Note that these notebook will need jupyter installed in the python environment. The molecule generation notebook additionally requires scikit-learn installed in the python environment.
 
-## Basic usage: Localizing problem bonds
+| Notebook | Contents |
+|---|---|
+| `generate_molecules.ipynb` | Random generation, corpus biasing, adaptive GA for fast and slow scoring functions |
+| `protection_and_replacements.ipynb` | Full protection API, all replacement operations, mol_cleaner multi-violation examples |
+| `mutating_molecules.ipynb` | Mutation operations and score filtering |
+| `evaluate_bonds.ipynb` | Per-bond PMI scoring and visualisation |
+| `median_molecules.ipynb` | Median molecule generation from a set |
 
-import lacan and inspect a molecule by running the following commands:
+---
 
-```python
-from lacan import lacan
-from rdkit import Chem
-p = lacan.load_profile("chembl")
-m = Chem.MolFromSmiles("c1ccccc1CCN(OCCc1occc1)")
-score,info = lacan.score_mol(m,p)
-print(info["bad_bonds"])
+## Running the tests
+
+```bash
+pip install -e ".[dev]"   # installs lacan + pytest
+pytest                     # full suite (~70 tests)
+pytest tests/test_protect.py -v   # single module
 ```
 
-which will output a dictionary with an entry for every bond in the molecule. Currently the filter is binary, so the score is 1 if the molecule passes the filter and 0 if it doesn't. The problem bonds output
-follow rdkit bond numbering which means we can visualize problem bonds in our
-molecules easily as follows:
-
-```python
-from rdkit.Chem import Draw
-d = Draw.MolToImage(m,highlightBonds=info["bad_bonds"])
-display(d)
-```
-
-giving the following result:
-
-![image](https://github.com/user-attachments/assets/5758aace-c6aa-4aaf-a04a-a58a31fe48af)
-
-
-This correctly identified the N-O linkage as problematic.
-
-## Breeding molecules
-
-This filter enables us to recombine fragments and filter out linkages that are rare in the reference set. Lacan has a "breeding" or crossover functionality where two molecules get fragmented and recombined. By subjecting the recombinations to LACAN filter we can retain only decent looking "median molecules".
-
-example:
-```python
-from lacan import breed
-from rdkit import Chem
-from rdkit.Chem import Draw
-
-m1 = Chem.MolFromSmiles("c1cc(ccc1[C@@H]2CCNC[C@H]2COc3ccc4c(c3)OCO4)F")
-m2 = Chem.MolFromSmiles("CNCCC(C1=CC=CC=C1)OC2=CC=C(C=C2)C(F)(F)F")
-median_molecules = breed.breed(m1,m2,p,nmols=9)
-```
-
-this outputs the following molecules that are "in between" its parents fluoxetine and sertraline:
-```python
-d = Draw.MolsToGridImage(median_molecules)
-display(d)
-```
-![image](https://github.com/user-attachments/assets/c6b6f37f-5537-4588-90f3-9c52aaf5bee1)
-
-## Generating molecules
-
-Random molecules can by generated simply using
-
-```python
-ms = gen.generate_filtered_molecules(n_jobs=-1,
-                                     n_molecules=9,
-                                     profile=p,
-                                     seed=456,
-                                     min_atoms=20)
-```
-
-For generation towards a goal, see the example notebooks, which showcase this functionality.
-
-## Building a profile
-
-If you want to build a custom profile using your own reference data set, this can be done through the LACAN cli as follows
-
-`python lacan.py -i your_dataset_here.smi -m profile -p my_new_profile`
-
-This will create a pickled profile in the data folder which you can then invoke using:
-
-`p = lacan.load_profile("my_new_profile")`
+| Test file | Coverage |
+|---|---|
+| `test_lacan.py` | Scoring, profiles, hash invariants, per-bond assessment |
+| `test_decompose.py` | Fragmentation correctness |
+| `test_mutate.py` | Mutations, random mode, protection, multiprocessing |
+| `test_protect.py` | Full protection API, mol_cleaner, bond scoring |
+| `test_replace.py` | All four replacement operations, conservative mode, protection |

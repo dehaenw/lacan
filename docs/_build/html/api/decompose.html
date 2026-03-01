@@ -1,0 +1,330 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>lacan.decompose &mdash; LACAN 1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=f2a433a1"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="prev" title="lacan.breed" href="breed.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            LACAN
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="lacan.html">lacan.lacan</a></li>
+<li class="toctree-l1"><a class="reference internal" href="gen.html">lacan.gen</a></li>
+<li class="toctree-l1"><a class="reference internal" href="replace.html">lacan.replace</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mutate.html">lacan.mutate</a></li>
+<li class="toctree-l1"><a class="reference internal" href="protect.html">lacan.protect</a></li>
+<li class="toctree-l1"><a class="reference internal" href="breed.html">lacan.breed</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">lacan.decompose</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#fragment-taxonomy">Fragment taxonomy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#reaction-smarts">Reaction SMARTS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#corpus-format">Corpus format</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#lacan.decompose.decompose1"><code class="docutils literal notranslate"><span class="pre">decompose1</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#lacan.decompose.decompose2"><code class="docutils literal notranslate"><span class="pre">decompose2</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#lacan.decompose.ringdummy"><code class="docutils literal notranslate"><span class="pre">ringdummy</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#lacan.decompose.nonringdummy"><code class="docutils literal notranslate"><span class="pre">nonringdummy</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#lacan.decompose.singledummy"><code class="docutils literal notranslate"><span class="pre">singledummy</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#lacan.decompose.doubledummy"><code class="docutils literal notranslate"><span class="pre">doubledummy</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#lacan.decompose.get_bonds_string"><code class="docutils literal notranslate"><span class="pre">get_bonds_string()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#lacan.decompose.decompose_molecule"><code class="docutils literal notranslate"><span class="pre">decompose_molecule()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#lacan.decompose.get_all_decompositions"><code class="docutils literal notranslate"><span class="pre">get_all_decompositions()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#lacan.decompose.save_frags"><code class="docutils literal notranslate"><span class="pre">save_frags()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#lacan.decompose.get_corpus"><code class="docutils literal notranslate"><span class="pre">get_corpus()</span></code></a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">LACAN</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">lacan.decompose</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/api/decompose.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-lacan.decompose">
+<span id="lacan-decompose"></span><h1>lacan.decompose<a class="headerlink" href="#module-lacan.decompose" title="Link to this heading"></a></h1>
+<p>decompose.py — Molecule fragmentation into rings, linkers, and substituents.</p>
+<p>This module breaks drug-like molecules into three canonical fragment types and
+provides utilities for building and saving fragment corpora.</p>
+<section id="fragment-taxonomy">
+<h2>Fragment taxonomy<a class="headerlink" href="#fragment-taxonomy" title="Link to this heading"></a></h2>
+<p>After exhaustive recursive cutting at all non-ring exo-bonds, each resulting
+fragment is classified by the number and position of its dummy atoms (<code class="docutils literal notranslate"><span class="pre">*</span></code>):</p>
+<dl class="simple">
+<dt><strong>Ring</strong></dt><dd><p>Fragment contains at least one ring atom adjacent to a dummy (matched by
+<code class="docutils literal notranslate"><span class="pre">ringdummy</span></code>).  Examples: <code class="docutils literal notranslate"><span class="pre">[*]c1ccccc1</span></code>, <code class="docutils literal notranslate"><span class="pre">[*]c1ccncc1[*]</span></code>.</p>
+</dd>
+<dt><strong>Linker</strong></dt><dd><p>Fragment has no ring atoms adjacent to any dummy, but has <strong>two or more</strong>
+non-ring dummy neighbours (matched by <code class="docutils literal notranslate"><span class="pre">nonringdummy</span></code> twice or more).
+Examples: <code class="docutils literal notranslate"><span class="pre">[*]CC[*]</span></code>, <code class="docutils literal notranslate"><span class="pre">[*]C(=O)[*]</span></code>.</p>
+</dd>
+<dt><strong>Substituent</strong></dt><dd><p>Fragment has exactly <strong>one</strong> non-ring dummy neighbour — a terminal group.
+Examples: <code class="docutils literal notranslate"><span class="pre">[*]CH3</span></code>, <code class="docutils literal notranslate"><span class="pre">[*]CF3</span></code>, <code class="docutils literal notranslate"><span class="pre">[*]OH</span></code>.</p>
+</dd>
+</dl>
+<p>Single-atom molecules, atoms that failed sanitisation, or molecules that do not
+decompose further (no non-ring exo-bonds) are silently ignored.</p>
+</section>
+<section id="reaction-smarts">
+<h2>Reaction SMARTS<a class="headerlink" href="#reaction-smarts" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">decompose1</span></code>  cuts single-bond ring-exo bonds: <code class="docutils literal notranslate"><span class="pre">[!#0]!&#64;;-[R]</span> <span class="pre">&gt;&gt;</span> <span class="pre">[!R]-[*].[R]-[*]</span></code>
+<code class="docutils literal notranslate"><span class="pre">decompose2</span></code>  cuts double-bond ring-exo bonds: <code class="docutils literal notranslate"><span class="pre">[!#0]!&#64;;=[R]</span> <span class="pre">&gt;&gt;</span> <span class="pre">[!R]=[*].[R]=[*]</span></code></p>
+<p>Note the <code class="docutils literal notranslate"><span class="pre">!&#64;</span></code> (not-in-ring) flag ensures only exo-bonds are cut, not ring
+bonds themselves.  The <code class="docutils literal notranslate"><span class="pre">!#0</span></code> guard prevents re-cutting already-cut dummy
+atoms.</p>
+</section>
+<section id="corpus-format">
+<h2>Corpus format<a class="headerlink" href="#corpus-format" title="Link to this heading"></a></h2>
+<p>Each corpus entry is a list:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span><span class="n">smiles</span><span class="p">,</span> <span class="n">count</span><span class="p">,</span> <span class="n">degree</span><span class="p">,</span> <span class="n">ftype</span><span class="p">,</span> <span class="n">bonds</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>where <code class="docutils literal notranslate"><span class="pre">smiles</span></code> is the canonical fragment SMILES (with <code class="docutils literal notranslate"><span class="pre">*</span></code> dummies),
+<code class="docutils literal notranslate"><span class="pre">count</span></code> is its occurrence frequency, <code class="docutils literal notranslate"><span class="pre">degree</span></code> is the number of attachment
+points, <code class="docutils literal notranslate"><span class="pre">ftype</span></code> is <code class="docutils literal notranslate"><span class="pre">&quot;Ring&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;Linker&quot;</span></code>, or <code class="docutils literal notranslate"><span class="pre">&quot;Sub&quot;</span></code>, and <code class="docutils literal notranslate"><span class="pre">bonds</span></code> is
+a string like <code class="docutils literal notranslate"><span class="pre">&quot;-&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;--&quot;</span></code>, or <code class="docutils literal notranslate"><span class="pre">&quot;=-&quot;</span></code> encoding the bond types at each
+dummy in order of dummy atom index.</p>
+</section>
+<dl class="py data">
+<dt class="sig sig-object py" id="lacan.decompose.decompose1">
+<span class="sig-prename descclassname"><span class="pre">lacan.decompose.</span></span><span class="sig-name descname"><span class="pre">decompose1</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;rdkit.Chem.rdChemReactions.ChemicalReaction</span> <span class="pre">object&gt;</span></em><a class="headerlink" href="#lacan.decompose.decompose1" title="Link to this definition"></a></dt>
+<dd><p>Cut a single-bond ring-exo bond.</p>
+<p>Yields two fragments: the non-ring part with a single-bond dummy, and the ring
+part with a single-bond dummy.  The <code class="docutils literal notranslate"><span class="pre">!#0</span></code> guard prevents re-cutting dummies
+from a previous iteration.  Modified from the original to also decompose
+biphenyls and other directly-fused ring systems.</p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="lacan.decompose.decompose2">
+<span class="sig-prename descclassname"><span class="pre">lacan.decompose.</span></span><span class="sig-name descname"><span class="pre">decompose2</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;rdkit.Chem.rdChemReactions.ChemicalReaction</span> <span class="pre">object&gt;</span></em><a class="headerlink" href="#lacan.decompose.decompose2" title="Link to this definition"></a></dt>
+<dd><p>Cut a double-bond ring-exo bond (e.g. a carbonyl attached to a ring).</p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="lacan.decompose.ringdummy">
+<span class="sig-prename descclassname"><span class="pre">lacan.decompose.</span></span><span class="sig-name descname"><span class="pre">ringdummy</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;rdkit.Chem.rdchem.Mol</span> <span class="pre">object&gt;</span></em><a class="headerlink" href="#lacan.decompose.ringdummy" title="Link to this definition"></a></dt>
+<dd><p>Matches a dummy atom adjacent to a ring atom — identifies Ring fragments.</p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="lacan.decompose.nonringdummy">
+<span class="sig-prename descclassname"><span class="pre">lacan.decompose.</span></span><span class="sig-name descname"><span class="pre">nonringdummy</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;rdkit.Chem.rdchem.Mol</span> <span class="pre">object&gt;</span></em><a class="headerlink" href="#lacan.decompose.nonringdummy" title="Link to this definition"></a></dt>
+<dd><p>Matches a dummy atom adjacent to a non-ring atom — identifies Linker/Sub fragments.</p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="lacan.decompose.singledummy">
+<span class="sig-prename descclassname"><span class="pre">lacan.decompose.</span></span><span class="sig-name descname"><span class="pre">singledummy</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;rdkit.Chem.rdchem.Mol</span> <span class="pre">object&gt;</span></em><a class="headerlink" href="#lacan.decompose.singledummy" title="Link to this definition"></a></dt>
+<dd><p>Matches a single-bond dummy attachment point.</p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="lacan.decompose.doubledummy">
+<span class="sig-prename descclassname"><span class="pre">lacan.decompose.</span></span><span class="sig-name descname"><span class="pre">doubledummy</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">&lt;rdkit.Chem.rdchem.Mol</span> <span class="pre">object&gt;</span></em><a class="headerlink" href="#lacan.decompose.doubledummy" title="Link to this definition"></a></dt>
+<dd><p>Matches a double-bond dummy attachment point.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="lacan.decompose.get_bonds_string">
+<span class="sig-prename descclassname"><span class="pre">lacan.decompose.</span></span><span class="sig-name descname"><span class="pre">get_bonds_string</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">smi</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/lacan/decompose.html#get_bonds_string"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#lacan.decompose.get_bonds_string" title="Link to this definition"></a></dt>
+<dd><p>Encode the bond types at all dummy attachment points as a string.</p>
+<p>The string contains one character per dummy atom, sorted by dummy atom
+index: <code class="docutils literal notranslate"><span class="pre">&quot;-&quot;</span></code> for single bonds and <code class="docutils literal notranslate"><span class="pre">&quot;=&quot;</span></code> for double bonds.  This is
+stored in the corpus so that fragment matching can filter by compatible
+bond types.</p>
+<p>Examples: <code class="docutils literal notranslate"><span class="pre">&quot;[*]CC&quot;</span></code> → <code class="docutils literal notranslate"><span class="pre">&quot;-&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;[*]CC[*]&quot;</span></code> → <code class="docutils literal notranslate"><span class="pre">&quot;--&quot;</span></code>,
+<code class="docutils literal notranslate"><span class="pre">&quot;[*]C(=O)[*]&quot;</span></code> → <code class="docutils literal notranslate"><span class="pre">&quot;-=&quot;</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>smi</strong> (str — fragment SMILES containing at least one <code class="docutils literal notranslate"><span class="pre">*</span></code> dummy atom)</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Bond-type string, one character per dummy, sorted by dummy atom index.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="lacan.decompose.decompose_molecule">
+<span class="sig-prename descclassname"><span class="pre">lacan.decompose.</span></span><span class="sig-name descname"><span class="pre">decompose_molecule</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">smi</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">asSmi</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/lacan/decompose.html#decompose_molecule"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#lacan.decompose.decompose_molecule" title="Link to this definition"></a></dt>
+<dd><p>Recursively decompose a molecule into rings, linkers, and substituents.</p>
+<p>The algorithm repeatedly applies <code class="docutils literal notranslate"><span class="pre">decompose1</span></code> and <code class="docutils literal notranslate"><span class="pre">decompose2</span></code> to cut
+all non-ring exo-bonds, one at a time, until no further cuts are possible.
+The resulting terminal fragments are then classified into rings, linkers,
+and substituents based on their dummy-atom topology (see module docstring).</p>
+<p>Stereochemistry is removed before decomposition so that stereoisomers map
+to the same fragment SMARTS.</p>
+<p>Single-fragment decompositions (molecules with no exo-bonds, e.g. bare
+rings) are discarded — they yield no useful corpus entries.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>smi</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a><em> or </em><em>RDKit Mol — the molecule to decompose</em>)</p></li>
+<li><p><strong>asSmi</strong> (bool — if True (default), treat <em>smi</em> as a SMILES string and parse) – it; if False, treat it directly as an RDKit Mol object</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>(rings, linkers, subs)</strong></p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>three lists of canonical SMILES strings</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="lacan.decompose.get_all_decompositions">
+<span class="sig-prename descclassname"><span class="pre">lacan.decompose.</span></span><span class="sig-name descname"><span class="pre">get_all_decompositions</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">smis</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_jobs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-1</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/lacan/decompose.html#get_all_decompositions"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#lacan.decompose.get_all_decompositions" title="Link to this definition"></a></dt>
+<dd><p>Decompose a large list of SMILES strings in parallel.</p>
+<p>Distributes <a class="reference internal" href="#lacan.decompose.decompose_molecule" title="lacan.decompose.decompose_molecule"><code class="xref py py-func docutils literal notranslate"><span class="pre">decompose_molecule()</span></code></a> across a multiprocessing pool using
+<code class="docutils literal notranslate"><span class="pre">imap_unordered</span></code> for memory-efficient streaming (important for millions
+of ChEMBL molecules).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>smis</strong> (<em>iterable</em><em> of </em><em>SMILES strings</em>)</p></li>
+<li><p><strong>n_jobs</strong> (<em>int — number</em><em> of </em><em>worker processes; -1</em><em> (</em><em>default</em><em>) </em><em>uses all CPU cores</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>(all_rings, all_linkers, all_subs)</strong> – (unsorted, may contain duplicates — use <a class="reference internal" href="#lacan.decompose.save_frags" title="lacan.decompose.save_frags"><code class="xref py py-func docutils literal notranslate"><span class="pre">save_frags()</span></code></a> to count
+and filter)</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>three flat lists of SMILES strings</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="lacan.decompose.save_frags">
+<span class="sig-prename descclassname"><span class="pre">lacan.decompose.</span></span><span class="sig-name descname"><span class="pre">save_frags</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">r</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">l</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">minN</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/lacan/decompose.html#save_frags"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#lacan.decompose.save_frags" title="Link to this definition"></a></dt>
+<dd><p>Count fragment occurrences and save a filtered corpus CSV.</p>
+<p>Only fragments appearing more than <code class="docutils literal notranslate"><span class="pre">minN</span></code> times are written.  The output
+CSV has columns <code class="docutils literal notranslate"><span class="pre">smiles,</span> <span class="pre">occurrence,</span> <span class="pre">degree,</span> <span class="pre">type,</span> <span class="pre">bonds</span></code> and is sorted
+by occurrence descending.  The resulting file can be loaded with
+<code class="docutils literal notranslate"><span class="pre">replace.load_corpus(path=&quot;my_corpus.csv&quot;)</span></code> as a drop-in replacement
+for the built-in ChEMBL corpus.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>r</strong> (list of ring SMILES (from <a class="reference internal" href="#lacan.decompose.get_all_decompositions" title="lacan.decompose.get_all_decompositions"><code class="xref py py-func docutils literal notranslate"><span class="pre">get_all_decompositions()</span></code></a>))</p></li>
+<li><p><strong>l</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em> of </em><em>linker SMILES</em>)</p></li>
+<li><p><strong>s</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)"><em>list</em></a><em> of </em><em>substituent SMILES</em>)</p></li>
+<li><p><strong>output_path</strong> (<em>str — path to write the CSV</em>)</p></li>
+<li><p><strong>minN</strong> (<em>int — minimum occurrence count to include</em><em> (</em><em>default 10</em><em>)</em>)</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="lacan.decompose.get_corpus">
+<span class="sig-prename descclassname"><span class="pre">lacan.decompose.</span></span><span class="sig-name descname"><span class="pre">get_corpus</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mols</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/lacan/decompose.html#get_corpus"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#lacan.decompose.get_corpus" title="Link to this definition"></a></dt>
+<dd><p>Build a fragment corpus from a list of RDKit Mol objects.</p>
+<p>Decomposes each molecule and counts all fragment occurrences.  Unlike
+<a class="reference internal" href="#lacan.decompose.save_frags" title="lacan.decompose.save_frags"><code class="xref py py-func docutils literal notranslate"><span class="pre">save_frags()</span></code></a>, this function returns the corpus as a list in memory
+(no minimum count filter, no file I/O) so it can be passed directly to
+<a class="reference internal" href="gen.html#lacan.gen.get_corpus_from_mols" title="lacan.gen.get_corpus_from_mols"><code class="xref py py-func docutils literal notranslate"><span class="pre">get_corpus_from_mols()</span></code></a> for corpus biasing.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>mols</strong> (<em>iterable</em><em> of </em><em>RDKit Mol objects</em><em> (</em><em>None entries are silently skipped</em><em>)</em>)</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Sorted by count descending.  Contains all fragment types with count ≥ 1.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.14)">list</a> of [smiles, count, degree, ftype, bonds]</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="breed.html" class="btn btn-neutral float-left" title="lacan.breed" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, Wim Dehaen.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

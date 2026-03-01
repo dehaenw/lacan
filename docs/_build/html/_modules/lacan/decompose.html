@@ -1,0 +1,451 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>lacan.decompose &mdash; LACAN 1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=f2a433a1"></script>
+      <script src="../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            LACAN
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/lacan.html">lacan.lacan</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/gen.html">lacan.gen</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/replace.html">lacan.replace</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/mutate.html">lacan.mutate</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/protect.html">lacan.protect</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/breed.html">lacan.breed</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/decompose.html">lacan.decompose</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">LACAN</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">lacan.decompose</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for lacan.decompose</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">decompose.py — Molecule fragmentation into rings, linkers, and substituents.</span>
+
+<span class="sd">This module breaks drug-like molecules into three canonical fragment types and</span>
+<span class="sd">provides utilities for building and saving fragment corpora.</span>
+
+<span class="sd">Fragment taxonomy</span>
+<span class="sd">-----------------</span>
+<span class="sd">After exhaustive recursive cutting at all non-ring exo-bonds, each resulting</span>
+<span class="sd">fragment is classified by the number and position of its dummy atoms (``*``):</span>
+
+<span class="sd">**Ring**</span>
+<span class="sd">    Fragment contains at least one ring atom adjacent to a dummy (matched by</span>
+<span class="sd">    ``ringdummy``).  Examples: ``[*]c1ccccc1``, ``[*]c1ccncc1[*]``.</span>
+
+<span class="sd">**Linker**</span>
+<span class="sd">    Fragment has no ring atoms adjacent to any dummy, but has **two or more**</span>
+<span class="sd">    non-ring dummy neighbours (matched by ``nonringdummy`` twice or more).</span>
+<span class="sd">    Examples: ``[*]CC[*]``, ``[*]C(=O)[*]``.</span>
+
+<span class="sd">**Substituent**</span>
+<span class="sd">    Fragment has exactly **one** non-ring dummy neighbour — a terminal group.</span>
+<span class="sd">    Examples: ``[*]CH3``, ``[*]CF3``, ``[*]OH``.</span>
+
+<span class="sd">Single-atom molecules, atoms that failed sanitisation, or molecules that do not</span>
+<span class="sd">decompose further (no non-ring exo-bonds) are silently ignored.</span>
+
+<span class="sd">Reaction SMARTS</span>
+<span class="sd">---------------</span>
+<span class="sd">``decompose1``  cuts single-bond ring-exo bonds: ``[!#0]!@;-[R] &gt;&gt; [!R]-[*].[R]-[*]``</span>
+<span class="sd">``decompose2``  cuts double-bond ring-exo bonds: ``[!#0]!@;=[R] &gt;&gt; [!R]=[*].[R]=[*]``</span>
+
+<span class="sd">Note the ``!@`` (not-in-ring) flag ensures only exo-bonds are cut, not ring</span>
+<span class="sd">bonds themselves.  The ``!#0`` guard prevents re-cutting already-cut dummy</span>
+<span class="sd">atoms.</span>
+
+<span class="sd">Corpus format</span>
+<span class="sd">-------------</span>
+<span class="sd">Each corpus entry is a list::</span>
+
+<span class="sd">    [smiles, count, degree, ftype, bonds]</span>
+
+<span class="sd">where ``smiles`` is the canonical fragment SMILES (with ``*`` dummies),</span>
+<span class="sd">``count`` is its occurrence frequency, ``degree`` is the number of attachment</span>
+<span class="sd">points, ``ftype`` is ``&quot;Ring&quot;``, ``&quot;Linker&quot;``, or ``&quot;Sub&quot;``, and ``bonds`` is</span>
+<span class="sd">a string like ``&quot;-&quot;``, ``&quot;--&quot;``, or ``&quot;=-&quot;`` encoding the bond types at each</span>
+<span class="sd">dummy in order of dummy atom index.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">rdkit</span><span class="w"> </span><span class="kn">import</span> <span class="n">Chem</span><span class="p">,</span> <span class="n">RDLogger</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">rdkit.Chem</span><span class="w"> </span><span class="kn">import</span> <span class="n">rdChemReactions</span><span class="p">,</span> <span class="n">inchi</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">random</span><span class="o">,</span><span class="w"> </span><span class="nn">argparse</span><span class="o">,</span><span class="w"> </span><span class="nn">csv</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">collections</span><span class="w"> </span><span class="kn">import</span> <span class="n">Counter</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">multiprocessing</span>
+
+<span class="n">RDLogger</span><span class="o">.</span><span class="n">DisableLog</span><span class="p">(</span><span class="s1">&#39;rdApp.*&#39;</span><span class="p">)</span>
+
+<span class="n">decompose1</span> <span class="o">=</span> <span class="n">rdChemReactions</span><span class="o">.</span><span class="n">ReactionFromSmarts</span><span class="p">(</span>
+    <span class="s2">&quot;[!#0:0]!@;-[R:1]&gt;&gt;[!R:0]-[#0].[R:1]-[#0]&quot;</span>
+<span class="p">)</span>
+<span class="sd">&quot;&quot;&quot;Cut a single-bond ring-exo bond.</span>
+
+<span class="sd">Yields two fragments: the non-ring part with a single-bond dummy, and the ring</span>
+<span class="sd">part with a single-bond dummy.  The ``!#0`` guard prevents re-cutting dummies</span>
+<span class="sd">from a previous iteration.  Modified from the original to also decompose</span>
+<span class="sd">biphenyls and other directly-fused ring systems.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="n">decompose2</span> <span class="o">=</span> <span class="n">rdChemReactions</span><span class="o">.</span><span class="n">ReactionFromSmarts</span><span class="p">(</span>
+    <span class="s2">&quot;[!#0:0]!@;=[R:1]&gt;&gt;[!R:0]=[#0].[R:1]=[#0]&quot;</span>
+<span class="p">)</span>
+<span class="sd">&quot;&quot;&quot;Cut a double-bond ring-exo bond (e.g. a carbonyl attached to a ring).&quot;&quot;&quot;</span>
+
+<span class="n">ringdummy</span> <span class="o">=</span> <span class="n">Chem</span><span class="o">.</span><span class="n">MolFromSmarts</span><span class="p">(</span><span class="s2">&quot;[#0]~[R]&quot;</span><span class="p">)</span>
+<span class="sd">&quot;&quot;&quot;Matches a dummy atom adjacent to a ring atom — identifies Ring fragments.&quot;&quot;&quot;</span>
+
+<span class="n">nonringdummy</span> <span class="o">=</span> <span class="n">Chem</span><span class="o">.</span><span class="n">MolFromSmarts</span><span class="p">(</span><span class="s2">&quot;[#0]~[!R]&quot;</span><span class="p">)</span>
+<span class="sd">&quot;&quot;&quot;Matches a dummy atom adjacent to a non-ring atom — identifies Linker/Sub fragments.&quot;&quot;&quot;</span>
+
+<span class="n">singledummy</span> <span class="o">=</span> <span class="n">Chem</span><span class="o">.</span><span class="n">MolFromSmarts</span><span class="p">(</span><span class="s2">&quot;[#0;$([*]-[*])]&quot;</span><span class="p">)</span>
+<span class="sd">&quot;&quot;&quot;Matches a single-bond dummy attachment point.&quot;&quot;&quot;</span>
+
+<span class="n">doubledummy</span> <span class="o">=</span> <span class="n">Chem</span><span class="o">.</span><span class="n">MolFromSmarts</span><span class="p">(</span><span class="s2">&quot;[#0;$([*]=[*])]&quot;</span><span class="p">)</span>
+<span class="sd">&quot;&quot;&quot;Matches a double-bond dummy attachment point.&quot;&quot;&quot;</span>
+
+
+<div class="viewcode-block" id="get_bonds_string">
+<a class="viewcode-back" href="../../api/decompose.html#lacan.decompose.get_bonds_string">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_bonds_string</span><span class="p">(</span><span class="n">smi</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Encode the bond types at all dummy attachment points as a string.</span>
+
+<span class="sd">    The string contains one character per dummy atom, sorted by dummy atom</span>
+<span class="sd">    index: ``&quot;-&quot;`` for single bonds and ``&quot;=&quot;`` for double bonds.  This is</span>
+<span class="sd">    stored in the corpus so that fragment matching can filter by compatible</span>
+<span class="sd">    bond types.</span>
+
+<span class="sd">    Examples: ``&quot;[*]CC&quot;`` → ``&quot;-&quot;``, ``&quot;[*]CC[*]&quot;`` → ``&quot;--&quot;``,</span>
+<span class="sd">    ``&quot;[*]C(=O)[*]&quot;`` → ``&quot;-=&quot;``.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    smi : str — fragment SMILES containing at least one ``*`` dummy atom</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    str</span>
+<span class="sd">        Bond-type string, one character per dummy, sorted by dummy atom index.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">mol</span> <span class="o">=</span> <span class="n">Chem</span><span class="o">.</span><span class="n">MolFromSmiles</span><span class="p">(</span><span class="n">smi</span><span class="p">)</span>
+    <span class="n">bonds</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">db</span> <span class="ow">in</span> <span class="n">mol</span><span class="o">.</span><span class="n">GetSubstructMatches</span><span class="p">(</span><span class="n">singledummy</span><span class="p">):</span>
+        <span class="n">bonds</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="s2">&quot;-&quot;</span><span class="p">,</span> <span class="n">db</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
+    <span class="k">for</span> <span class="n">db</span> <span class="ow">in</span> <span class="n">mol</span><span class="o">.</span><span class="n">GetSubstructMatches</span><span class="p">(</span><span class="n">doubledummy</span><span class="p">):</span>
+        <span class="n">bonds</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="s2">&quot;=&quot;</span><span class="p">,</span> <span class="n">db</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
+    <span class="n">bonds</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">bonds</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+    <span class="k">return</span> <span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="n">b</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">b</span> <span class="ow">in</span> <span class="n">bonds</span><span class="p">])</span></div>
+
+
+
+<div class="viewcode-block" id="decompose_molecule">
+<a class="viewcode-back" href="../../api/decompose.html#lacan.decompose.decompose_molecule">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">decompose_molecule</span><span class="p">(</span><span class="n">smi</span><span class="p">,</span> <span class="n">asSmi</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Recursively decompose a molecule into rings, linkers, and substituents.</span>
+
+<span class="sd">    The algorithm repeatedly applies ``decompose1`` and ``decompose2`` to cut</span>
+<span class="sd">    all non-ring exo-bonds, one at a time, until no further cuts are possible.</span>
+<span class="sd">    The resulting terminal fragments are then classified into rings, linkers,</span>
+<span class="sd">    and substituents based on their dummy-atom topology (see module docstring).</span>
+
+<span class="sd">    Stereochemistry is removed before decomposition so that stereoisomers map</span>
+<span class="sd">    to the same fragment SMARTS.</span>
+
+<span class="sd">    Single-fragment decompositions (molecules with no exo-bonds, e.g. bare</span>
+<span class="sd">    rings) are discarded — they yield no useful corpus entries.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    smi   : str or RDKit Mol — the molecule to decompose</span>
+<span class="sd">    asSmi : bool — if True (default), treat *smi* as a SMILES string and parse</span>
+<span class="sd">            it; if False, treat it directly as an RDKit Mol object</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    (rings, linkers, subs) : three lists of canonical SMILES strings</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">rings</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">linkers</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">subs</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">mol</span> <span class="o">=</span> <span class="n">Chem</span><span class="o">.</span><span class="n">MolFromSmiles</span><span class="p">(</span><span class="n">smi</span><span class="p">)</span> <span class="k">if</span> <span class="n">asSmi</span> <span class="k">else</span> <span class="n">smi</span>
+    <span class="k">if</span> <span class="n">mol</span><span class="p">:</span>
+        <span class="n">Chem</span><span class="o">.</span><span class="n">RemoveStereochemistry</span><span class="p">(</span><span class="n">mol</span><span class="p">)</span>
+        <span class="n">frags</span> <span class="o">=</span> <span class="p">[</span><span class="n">mol</span><span class="p">]</span>
+        <span class="n">final_frags</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">while</span> <span class="nb">len</span><span class="p">(</span><span class="n">frags</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">prods</span> <span class="o">=</span> <span class="n">decompose1</span><span class="o">.</span><span class="n">RunReactants</span><span class="p">((</span><span class="n">frags</span><span class="p">[</span><span class="mi">0</span><span class="p">],))</span>
+            <span class="n">prods</span> <span class="o">+=</span> <span class="n">decompose2</span><span class="o">.</span><span class="n">RunReactants</span><span class="p">((</span><span class="n">frags</span><span class="p">[</span><span class="mi">0</span><span class="p">],))</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">prods</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">frags</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+                    <span class="n">Chem</span><span class="o">.</span><span class="n">SanitizeMol</span><span class="p">(</span><span class="n">prods</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">])</span>
+                    <span class="n">Chem</span><span class="o">.</span><span class="n">SanitizeMol</span><span class="p">(</span><span class="n">prods</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">1</span><span class="p">])</span>
+                    <span class="n">frags</span> <span class="o">+=</span> <span class="p">[</span><span class="n">prods</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">],</span> <span class="n">prods</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">1</span><span class="p">]]</span>
+                <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                    <span class="n">frags</span> <span class="o">=</span> <span class="p">[]</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;decompose_molecule: sanitization failed (</span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">), skipping molecule&quot;</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">final_frags</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">frags</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                <span class="n">frags</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">final_frags</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">frag</span> <span class="ow">in</span> <span class="n">final_frags</span><span class="p">:</span>
+                <span class="n">rec</span> <span class="o">=</span> <span class="n">Chem</span><span class="o">.</span><span class="n">MolToSmiles</span><span class="p">(</span><span class="n">Chem</span><span class="o">.</span><span class="n">MolFromSmiles</span><span class="p">(</span><span class="n">Chem</span><span class="o">.</span><span class="n">MolToSmiles</span><span class="p">(</span><span class="n">frag</span><span class="p">)))</span>
+                <span class="k">if</span> <span class="n">frag</span><span class="o">.</span><span class="n">HasSubstructMatch</span><span class="p">(</span><span class="n">ringdummy</span><span class="p">):</span>
+                    <span class="n">rings</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">rec</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">sm</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">frag</span><span class="o">.</span><span class="n">GetSubstructMatches</span><span class="p">(</span><span class="n">nonringdummy</span><span class="p">))</span>
+                    <span class="k">if</span> <span class="n">sm</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+                        <span class="n">linkers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">rec</span><span class="p">)</span>
+                    <span class="k">elif</span> <span class="n">sm</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                        <span class="n">subs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">rec</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">rings</span><span class="p">,</span> <span class="n">linkers</span><span class="p">,</span> <span class="n">subs</span></div>
+
+
+
+<div class="viewcode-block" id="get_all_decompositions">
+<a class="viewcode-back" href="../../api/decompose.html#lacan.decompose.get_all_decompositions">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_all_decompositions</span><span class="p">(</span><span class="n">smis</span><span class="p">,</span> <span class="n">n_jobs</span><span class="o">=-</span><span class="mi">1</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Decompose a large list of SMILES strings in parallel.</span>
+
+<span class="sd">    Distributes :func:`decompose_molecule` across a multiprocessing pool using</span>
+<span class="sd">    ``imap_unordered`` for memory-efficient streaming (important for millions</span>
+<span class="sd">    of ChEMBL molecules).</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    smis   : iterable of SMILES strings</span>
+<span class="sd">    n_jobs : int — number of worker processes; -1 (default) uses all CPU cores</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    (all_rings, all_linkers, all_subs) : three flat lists of SMILES strings</span>
+<span class="sd">        (unsorted, may contain duplicates — use :func:`save_frags` to count</span>
+<span class="sd">        and filter)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">all_rings</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">all_linkers</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">all_subs</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">if</span> <span class="n">n_jobs</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+        <span class="n">n_jobs</span> <span class="o">=</span> <span class="n">multiprocessing</span><span class="o">.</span><span class="n">cpu_count</span><span class="p">()</span>
+    <span class="n">pool</span> <span class="o">=</span> <span class="n">multiprocessing</span><span class="o">.</span><span class="n">Pool</span><span class="p">(</span><span class="n">processes</span><span class="o">=</span><span class="n">n_jobs</span><span class="p">)</span>
+    <span class="n">rlss</span> <span class="o">=</span> <span class="n">pool</span><span class="o">.</span><span class="n">imap_unordered</span><span class="p">(</span><span class="n">decompose_molecule</span><span class="p">,</span> <span class="n">smis</span><span class="p">,</span> <span class="n">chunksize</span><span class="o">=</span><span class="mi">10000</span><span class="p">)</span>
+    <span class="n">pool</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+    <span class="n">pool</span><span class="o">.</span><span class="n">join</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">r</span><span class="p">,</span> <span class="n">l</span><span class="p">,</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">rlss</span><span class="p">:</span>
+        <span class="n">all_rings</span> <span class="o">+=</span> <span class="n">r</span>
+        <span class="n">all_linkers</span> <span class="o">+=</span> <span class="n">l</span>
+        <span class="n">all_subs</span> <span class="o">+=</span> <span class="n">s</span>
+    <span class="k">return</span> <span class="n">all_rings</span><span class="p">,</span> <span class="n">all_linkers</span><span class="p">,</span> <span class="n">all_subs</span></div>
+
+
+
+
+<div class="viewcode-block" id="save_frags">
+<a class="viewcode-back" href="../../api/decompose.html#lacan.decompose.save_frags">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">save_frags</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">l</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">output_path</span><span class="p">,</span> <span class="n">minN</span><span class="o">=</span><span class="mi">10</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Count fragment occurrences and save a filtered corpus CSV.</span>
+
+<span class="sd">    Only fragments appearing more than ``minN`` times are written.  The output</span>
+<span class="sd">    CSV has columns ``smiles, occurrence, degree, type, bonds`` and is sorted</span>
+<span class="sd">    by occurrence descending.  The resulting file can be loaded with</span>
+<span class="sd">    ``replace.load_corpus(path=&quot;my_corpus.csv&quot;)`` as a drop-in replacement</span>
+<span class="sd">    for the built-in ChEMBL corpus.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    r           : list of ring SMILES (from :func:`get_all_decompositions`)</span>
+<span class="sd">    l           : list of linker SMILES</span>
+<span class="sd">    s           : list of substituent SMILES</span>
+<span class="sd">    output_path : str — path to write the CSV</span>
+<span class="sd">    minN        : int — minimum occurrence count to include (default 10)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">cr</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">Counter</span><span class="p">(</span><span class="n">r</span><span class="p">))</span>
+    <span class="n">cl</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">Counter</span><span class="p">(</span><span class="n">l</span><span class="p">))</span>
+    <span class="n">cs</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">Counter</span><span class="p">(</span><span class="n">s</span><span class="p">))</span>
+    <span class="n">entries</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">cnt</span> <span class="ow">in</span> <span class="n">cr</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">if</span> <span class="n">cnt</span> <span class="o">&gt;</span> <span class="n">minN</span><span class="p">:</span>
+            <span class="n">entries</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="n">k</span><span class="p">,</span> <span class="n">cnt</span><span class="p">,</span> <span class="n">k</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="s2">&quot;*&quot;</span><span class="p">),</span> <span class="s2">&quot;Ring&quot;</span><span class="p">,</span> <span class="n">get_bonds_string</span><span class="p">(</span><span class="n">k</span><span class="p">)])</span>
+    <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">cnt</span> <span class="ow">in</span> <span class="n">cl</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">if</span> <span class="n">cnt</span> <span class="o">&gt;</span> <span class="n">minN</span><span class="p">:</span>
+            <span class="n">entries</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="n">k</span><span class="p">,</span> <span class="n">cnt</span><span class="p">,</span> <span class="n">k</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="s2">&quot;*&quot;</span><span class="p">),</span> <span class="s2">&quot;Linker&quot;</span><span class="p">,</span> <span class="n">get_bonds_string</span><span class="p">(</span><span class="n">k</span><span class="p">)])</span>
+    <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">cnt</span> <span class="ow">in</span> <span class="n">cs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">if</span> <span class="n">cnt</span> <span class="o">&gt;</span> <span class="n">minN</span><span class="p">:</span>
+            <span class="n">entries</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="n">k</span><span class="p">,</span> <span class="n">cnt</span><span class="p">,</span> <span class="n">k</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="s2">&quot;*&quot;</span><span class="p">),</span> <span class="s2">&quot;Sub&quot;</span><span class="p">,</span> <span class="n">get_bonds_string</span><span class="p">(</span><span class="n">k</span><span class="p">)])</span>
+    <span class="n">entries</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">entries</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="o">-</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">output_path</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">,</span> <span class="n">newline</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">csvfile</span><span class="p">:</span>
+        <span class="n">writer</span> <span class="o">=</span> <span class="n">csv</span><span class="o">.</span><span class="n">writer</span><span class="p">(</span><span class="n">csvfile</span><span class="p">,</span> <span class="n">delimiter</span><span class="o">=</span><span class="s2">&quot;,&quot;</span><span class="p">,</span> <span class="n">quotechar</span><span class="o">=</span><span class="s1">&#39;&quot;&#39;</span><span class="p">,</span>
+                            <span class="n">quoting</span><span class="o">=</span><span class="n">csv</span><span class="o">.</span><span class="n">QUOTE_MINIMAL</span><span class="p">)</span>
+        <span class="n">writer</span><span class="o">.</span><span class="n">writerow</span><span class="p">([</span><span class="s2">&quot;smiles&quot;</span><span class="p">,</span> <span class="s2">&quot;occurrence&quot;</span><span class="p">,</span> <span class="s2">&quot;degree&quot;</span><span class="p">,</span> <span class="s2">&quot;type&quot;</span><span class="p">,</span> <span class="s2">&quot;bonds&quot;</span><span class="p">])</span>
+        <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">entries</span><span class="p">:</span>
+            <span class="n">writer</span><span class="o">.</span><span class="n">writerow</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Wrote </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">entries</span><span class="p">)</span><span class="si">}</span><span class="s2"> fragments to </span><span class="si">{</span><span class="n">output_path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="get_corpus">
+<a class="viewcode-back" href="../../api/decompose.html#lacan.decompose.get_corpus">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_corpus</span><span class="p">(</span><span class="n">mols</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Build a fragment corpus from a list of RDKit Mol objects.</span>
+
+<span class="sd">    Decomposes each molecule and counts all fragment occurrences.  Unlike</span>
+<span class="sd">    :func:`save_frags`, this function returns the corpus as a list in memory</span>
+<span class="sd">    (no minimum count filter, no file I/O) so it can be passed directly to</span>
+<span class="sd">    :func:`~lacan.gen.get_corpus_from_mols` for corpus biasing.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    mols : iterable of RDKit Mol objects (None entries are silently skipped)</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    list of [smiles, count, degree, ftype, bonds]</span>
+<span class="sd">        Sorted by count descending.  Contains all fragment types with count ≥ 1.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">r</span><span class="p">,</span> <span class="n">l</span><span class="p">,</span> <span class="n">s</span> <span class="o">=</span> <span class="p">[],</span> <span class="p">[],</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">mol</span> <span class="ow">in</span> <span class="n">mols</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">mol</span><span class="p">:</span>
+            <span class="n">r0</span><span class="p">,</span> <span class="n">l0</span><span class="p">,</span> <span class="n">s0</span> <span class="o">=</span> <span class="n">decompose_molecule</span><span class="p">(</span><span class="n">mol</span><span class="p">,</span> <span class="n">asSmi</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+            <span class="n">r</span> <span class="o">+=</span> <span class="n">r0</span>
+            <span class="n">l</span> <span class="o">+=</span> <span class="n">l0</span>
+            <span class="n">s</span> <span class="o">+=</span> <span class="n">s0</span>
+    <span class="n">cr</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">Counter</span><span class="p">(</span><span class="n">r</span><span class="p">))</span>
+    <span class="n">cl</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">Counter</span><span class="p">(</span><span class="n">l</span><span class="p">))</span>
+    <span class="n">cs</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">Counter</span><span class="p">(</span><span class="n">s</span><span class="p">))</span>
+    <span class="n">entries</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">cr</span><span class="p">:</span>
+        <span class="n">entries</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="n">k</span><span class="p">,</span> <span class="n">cr</span><span class="p">[</span><span class="n">k</span><span class="p">],</span> <span class="n">k</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="s2">&quot;*&quot;</span><span class="p">),</span> <span class="s2">&quot;Ring&quot;</span><span class="p">,</span> <span class="n">get_bonds_string</span><span class="p">(</span><span class="n">k</span><span class="p">)])</span>
+    <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">cl</span><span class="p">:</span>
+        <span class="n">entries</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="n">k</span><span class="p">,</span> <span class="n">cl</span><span class="p">[</span><span class="n">k</span><span class="p">],</span> <span class="n">k</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="s2">&quot;*&quot;</span><span class="p">),</span> <span class="s2">&quot;Linker&quot;</span><span class="p">,</span> <span class="n">get_bonds_string</span><span class="p">(</span><span class="n">k</span><span class="p">)])</span>
+    <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">cs</span><span class="p">:</span>
+        <span class="n">entries</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="n">k</span><span class="p">,</span> <span class="n">cs</span><span class="p">[</span><span class="n">k</span><span class="p">],</span> <span class="n">k</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="s2">&quot;*&quot;</span><span class="p">),</span> <span class="s2">&quot;Sub&quot;</span><span class="p">,</span> <span class="n">get_bonds_string</span><span class="p">(</span><span class="n">k</span><span class="p">)])</span>
+    <span class="n">entries</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">entries</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="o">-</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+    <span class="k">return</span> <span class="n">entries</span></div>
+
+
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span>
+        <span class="n">description</span><span class="o">=</span><span class="p">(</span>
+            <span class="s2">&quot;Build a LACAN fragment corpus from a SMILES/CSV file.</span><span class="se">\n\n</span><span class="s2">&quot;</span>
+            <span class="s2">&quot;Examples:</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="s2">&quot;  # ChEMBL (space-separated, SMILES col 0, has header):</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="s2">&quot;  python -m lacan.decompose -i chembl.smi -o chembl_rls.csv --delimiter &#39; &#39; --skip-header</span><span class="se">\n\n</span><span class="s2">&quot;</span>
+            <span class="s2">&quot;  # COCONUT (comma-separated, SMILES col 0):</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="s2">&quot;  python -m lacan.decompose -i coconut.csv -o coconut_rls.csv</span><span class="se">\n\n</span><span class="s2">&quot;</span>
+            <span class="s2">&quot;Load the result with:</span><span class="se">\n</span><span class="s2">&quot;</span>
+            <span class="s2">&quot;  corpus = replace.load_corpus(path=&#39;coconut_rls.csv&#39;)&quot;</span>
+        <span class="p">),</span>
+        <span class="n">formatter_class</span><span class="o">=</span><span class="n">argparse</span><span class="o">.</span><span class="n">RawDescriptionHelpFormatter</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;-i&quot;</span><span class="p">,</span> <span class="s2">&quot;--input&quot;</span><span class="p">,</span>  <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Input SMILES or CSV file.&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;-o&quot;</span><span class="p">,</span> <span class="s2">&quot;--output&quot;</span><span class="p">,</span> <span class="n">required</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Output CSV path.&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--delimiter&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s2">&quot;,&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Column delimiter (default: comma).&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--smiles-col&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Zero-based SMILES column index (default: 0).&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--skip-header&quot;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_true&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Skip the first (header) line.&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--min-count&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Minimum fragment occurrence (default: 10).&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s2">&quot;--n-jobs&quot;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">default</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Parallel workers; -1 = all CPUs.&quot;</span><span class="p">)</span>
+    <span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
+
+    <span class="n">smis</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">input</span><span class="p">,</span> <span class="n">newline</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">reader</span> <span class="o">=</span> <span class="n">csv</span><span class="o">.</span><span class="n">reader</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">delimiter</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">delimiter</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">reader</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">args</span><span class="o">.</span><span class="n">skip_header</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="k">if</span> <span class="n">row</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">row</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">args</span><span class="o">.</span><span class="n">smiles_col</span><span class="p">:</span>
+                <span class="n">smi</span> <span class="o">=</span> <span class="n">row</span><span class="p">[</span><span class="n">args</span><span class="o">.</span><span class="n">smiles_col</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+                <span class="k">if</span> <span class="n">smi</span><span class="p">:</span>
+                    <span class="n">smis</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">smi</span><span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Read </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">smis</span><span class="p">)</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> SMILES from </span><span class="si">{</span><span class="n">args</span><span class="o">.</span><span class="n">input</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">r</span><span class="p">,</span> <span class="n">l</span><span class="p">,</span> <span class="n">s</span> <span class="o">=</span> <span class="n">get_all_decompositions</span><span class="p">(</span><span class="n">smis</span><span class="p">,</span> <span class="n">n_jobs</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">n_jobs</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Decomposed: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">r</span><span class="p">)</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> ring  </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">l</span><span class="p">)</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> linker  </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">s</span><span class="p">)</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> substituent&quot;</span><span class="p">)</span>
+    <span class="n">save_frags</span><span class="p">(</span><span class="n">r</span><span class="p">,</span> <span class="n">l</span><span class="p">,</span> <span class="n">s</span><span class="p">,</span> <span class="n">output_path</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">output</span><span class="p">,</span> <span class="n">minN</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">min_count</span><span class="p">)</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, LACAN contributors.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
