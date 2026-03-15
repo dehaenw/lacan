@@ -92,14 +92,17 @@ Worked examples are in `lacan/example_notebooks/`:
 ---
 
 ## Installation
+```bash
+pip install lacan
+```
+Installation is done via Pip. This package requires Python ≥ 3.9 and RDKit.
 
+For installing from source:
 ```bash
 git clone https://github.com/wdehaen/lacan.git
 cd lacan
 pip install .
 ```
-
-Requires Python ≥ 3.9 and RDKit. Once available on PyPI, installation will also be possible via `pip install lacan`.
 
 ---
 
