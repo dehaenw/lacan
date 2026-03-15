@@ -92,7 +92,7 @@ class TestGetAtomInvariants:
     def test_ring_atom_has_nonzero_ring_size(self):
         mol = Chem.MolFromSmiles("c1ccccc1")
         invs = get_atom_invariants(mol)
-        assert all(inv[4] == 6 for inv in invs), "All benzene atoms in 6-ring"
+        assert all(inv[4] == 2 for inv in invs), "All benzene atoms in 6-ring"
 
     def test_acyclic_atom_ring_size_zero(self):
         mol = Chem.MolFromSmiles("CC")

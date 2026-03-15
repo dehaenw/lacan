@@ -16,8 +16,9 @@ All four operations share these behaviours:
   frequency *and* their structural similarity to the fragment being replaced
   (Morgan fp Tanimoto, radius 2, including dummy atoms).  Set
   ``conservative=False`` for purely frequency-weighted sampling.
-* **Protection** — bonds touching protected atoms are never cut; ring systems
-  containing protected atoms are skipped entirely.
+* **Protection** — pass ``protect_smarts`` (a SMARTS string) to any function
+  to skip atoms matching the pattern.  The exclusion is re-derived from the
+  molecule on every call, so it survives SMILES round-trips transparently.
 * **Deduplication** — output molecules are deduplicated by InChIKey and scored
   by the LACAN profile; molecules scoring 0 are discarded.
 
@@ -34,7 +35,7 @@ from rdkit import Chem
 from lacan import decompose as decompose_module
 from lacan import lacan
 from lacan.protect import (
-    atom_is_protected,
+    get_protected_atoms,
     score_mol_ignoring_protected_bonds,
 )
 import random
@@ -241,15 +242,15 @@ def _get_ring_systems(mol):
 def _restore_bond_protection(product, orig_mol):
     """Re-apply ``_lp`` bond protection from *orig_mol* onto *product*.
 
-    RDKit reactions do not carry bond properties from reactants to products, so
-    ``_lp`` marks are lost after stitching.  This function restores them by
-    comparing atom-index pairs: if atoms *i* and *j* are bonded in *product*
-    and the same pair was a protected bond in *orig_mol*, the product bond is
-    re-marked ``_lp=True``.
+    RDKit reactions do not carry bond properties to products, so ``_lp`` marks
+    are lost after stitching.  This function restores them using substructure
+    matching: for each protected bond in *orig_mol* a two-atom query (with
+    ring-membership constraints on both endpoints) is matched against *product*,
+    and the matched bond is re-stamped ``_lp=True``.
 
-    ``FragmentOnBonds`` preserves original atom indices for all non-dummy atoms,
-    and the stitching reactions only form new bonds at dummy-atom sites, so
-    heavy-atom indices are stable throughout.
+    Atom-index-pair matching is deliberately avoided because atom indices are
+    not stable across ``RunReactants`` — previously non-dummy atom indices could
+    coincidentally match a protected pair in an unrelated part of the product.
 
     Parameters
     ----------
@@ -259,21 +260,37 @@ def _restore_bond_protection(product, orig_mol):
     Returns a new RDKit Mol with protection restored (or *product* unchanged if
     *orig_mol* has no protected bonds).
     """
-    # Build set of atom-pair tuples for protected bonds in the original molecule
-    protected_pairs = set()
-    for b in orig_mol.GetBonds():
-        if b.HasProp("_lp") and b.GetBoolProp("_lp"):
-            protected_pairs.add(
-                tuple(sorted([b.GetBeginAtomIdx(), b.GetEndAtomIdx()]))
-            )
-    if not protected_pairs:
+    protected_bonds = [b for b in orig_mol.GetBonds()
+                       if b.HasProp("_lp") and b.GetBoolProp("_lp")]
+    if not protected_bonds:
         return product
 
     rwmol = Chem.RWMol(product)
-    for b in rwmol.GetBonds():
-        pair = tuple(sorted([b.GetBeginAtomIdx(), b.GetEndAtomIdx()]))
-        if pair in protected_pairs:
-            b.SetBoolProp("_lp", True)
+
+    for pb in protected_bonds:
+        ai = pb.GetBeginAtomIdx()
+        aj = pb.GetEndAtomIdx()
+        a_i = orig_mol.GetAtomWithIdx(ai)
+        a_j = orig_mol.GetAtomWithIdx(aj)
+
+        # Build a two-atom query with ring constraints for both endpoints
+        ri = "R" if a_i.IsInRing() else "!R"
+        rj = "R" if a_j.IsInRing() else "!R"
+        bt = pb.GetBondTypeAsDouble()
+        bond_smarts = "-" if bt == 1.0 else (":" if bt == 1.5 else "=")
+        smarts = f"[{a_i.GetSymbol()};{ri}]{bond_smarts}[{a_j.GetSymbol()};{rj}]"
+        query = Chem.MolFromSmarts(smarts)
+        if query is None:
+            continue
+
+        matches = rwmol.GetSubstructMatches(query)
+        for match in matches:
+            prod_bond = rwmol.GetBondBetweenAtoms(match[0], match[1])
+            if prod_bond is not None:
+                prod_bond.SetBoolProp("_lp", True)
+            # Only mark the first match to avoid spurious over-protection
+            break
+
     return rwmol.GetMol()
 
 
@@ -315,7 +332,8 @@ def _restore_bond_protection(product, orig_mol):
 
 
 def decorate_scaffold(mol, p, score_threshold, fragcorpus=None, n_replacements=100,
-                      mode="Hydrogen", replacements_per_mol=1, chance_of_linker=0.5):
+                      mode="Hydrogen", replacements_per_mol=1, chance_of_linker=0.5,
+                      protect_smarts=None):
     """Add substituents to a scaffold by decorating free positions.
 
     Two modes are supported:
@@ -346,6 +364,8 @@ def decorate_scaffold(mol, p, score_threshold, fragcorpus=None, n_replacements=1
     mode              : ``"Hydrogen"`` or ``"Dummy"``
     replacements_per_mol : (Hydrogen mode only) H → fragment substitutions per attempt
     chance_of_linker  : (Dummy mode only) probability of prepending a linker fragment
+    protect_smarts    : SMARTS string; atoms matching it are skipped when selecting
+                        decoration sites.  ``None`` disables the check (default).
 
     Returns
     -------
@@ -354,6 +374,7 @@ def decorate_scaffold(mol, p, score_threshold, fragcorpus=None, n_replacements=1
     """
     if fragcorpus is None:
         fragcorpus = load_corpus()
+    protected_atoms = get_protected_atoms(mol, protect_smarts)
     fs = [e for e in fragcorpus if e[2] == 1 and e[4] == "-"]
     fd = [e for e in fragcorpus if e[2] == 1 and e[4] == "="]
     fl = [e for e in fragcorpus if e[2] == 2 and e[3] == "Linker" and e[4] == "--"]
@@ -361,9 +382,9 @@ def decorate_scaffold(mol, p, score_threshold, fragcorpus=None, n_replacements=1
 
     if mode == "Dummy":
         sdb_matches = [m for m in mol.GetSubstructMatches(singledummy)
-                       if not atom_is_protected(mol.GetAtomWithIdx(m[0]))]
+                       if m[0] not in protected_atoms]
         ddb_matches = [m for m in mol.GetSubstructMatches(doubledummy)
-                       if not atom_is_protected(mol.GetAtomWithIdx(m[0]))]
+                       if m[0] not in protected_atoms]
         sdb = len(sdb_matches)
         ddb = len(ddb_matches)
         for i in range(n_replacements):
@@ -380,14 +401,15 @@ def decorate_scaffold(mol, p, score_threshold, fragcorpus=None, n_replacements=1
             for j in range(ddb):
                 cmol = random.choice(rxn2.RunReactants((cmol, fe2[j])))[0]
                 Chem.SanitizeMol(cmol)
-            new_mols.append(_restore_bond_protection(cmol, mol))
+            m = _restore_bond_protection(cmol, mol)
+            new_mols.append(m)
 
     elif mode == "Hydrogen":
         for i in range(n_replacements):
             cmol = Chem.Mol(mol)
             for j in range(replacements_per_mol):
                 candidates = [a.GetIdx() for a in cmol.GetAtoms()
-                              if a.GetTotalNumHs() > 0 and not atom_is_protected(a)]
+                              if a.GetTotalNumHs() > 0 and a.GetIdx() not in protected_atoms]
                 if not candidates:
                     break
                 chosen = random.choice(candidates)
@@ -414,7 +436,8 @@ def decorate_scaffold(mol, p, score_threshold, fragcorpus=None, n_replacements=1
             for j in range(replacements_per_mol):
                 cmol = random.choice(rxn1.RunReactants((cmol, fe[j])))[0]
                 Chem.SanitizeMol(cmol)
-            new_mols.append(_restore_bond_protection(cmol, mol))
+            m = _restore_bond_protection(cmol, mol)
+            new_mols.append(m)
     else:
         print("mode not supported")
 
@@ -435,7 +458,7 @@ def decorate_scaffold(mol, p, score_threshold, fragcorpus=None, n_replacements=1
 
 
 def replace_substituent(mol, p, score_threshold, fragcorpus=None, n_replacements=100,
-                        conservative=True):
+                        conservative=True, protect_smarts=None):
     """Replace one non-ring substituent with a randomly sampled corpus fragment.
 
     A substituent is defined here strictly: a fragment produced by cutting a
@@ -467,6 +490,8 @@ def replace_substituent(mol, p, score_threshold, fragcorpus=None, n_replacements
     fragcorpus      : fragment corpus
     n_replacements  : number of replacement attempts
     conservative    : if True, bias sampling toward structurally similar fragments
+    protect_smarts  : SMARTS string; atoms matching it are excluded as substituent
+                      sites and scaffold attachment points.  ``None`` = no exclusion.
 
     Returns
     -------
@@ -479,6 +504,7 @@ def replace_substituent(mol, p, score_threshold, fragcorpus=None, n_replacements
     ring_atoms = set()
     for ring in mol.GetRingInfo().AtomRings():
         ring_atoms.update(ring)
+    protected_atoms = get_protected_atoms(mol, protect_smarts)
 
     prods = decompose1.RunReactants((mol,))
     pairs = []      # (substituent_mol, scaffold_mol) tuples
@@ -514,7 +540,13 @@ def replace_substituent(mol, p, score_threshold, fragcorpus=None, n_replacements
             if a.GetAtomicNum() == 0:
                 for n in a.GetNeighbors():
                     dummy_neighbor = n
-        if dummy_neighbor and atom_is_protected(dummy_neighbor):
+        if dummy_neighbor and dummy_neighbor.GetIdx() in protected_atoms:
+            continue
+
+        # Skip if the substituent being replaced contains any protected atom
+        sub_match = mol.GetSubstructMatch(substituent)
+        if sub_match and any(idx in protected_atoms for idx in sub_match
+                             if mol.GetAtomWithIdx(idx).GetAtomicNum() != 0):
             continue
 
         pairs.append((substituent, scaffold))
@@ -540,14 +572,15 @@ def replace_substituent(mol, p, score_threshold, fragcorpus=None, n_replacements
         frag_mol = Chem.MolFromSmiles(replacement[0])
         try:
             new_mol = rxn1.RunReactants((frag_mol, scaffold))[0][0]
-            new_mols.append(_restore_bond_protection(new_mol, mol))
+            m = _restore_bond_protection(new_mol, mol)
+            new_mols.append(m)
         except Exception:
             pass
     return _filter_and_dedup(new_mols, p)
 
 
 def replace_linker(mol, p, score_threshold, fragcorpus=None, n_replacements=100,
-                   conservative=True):
+                   conservative=True, protect_smarts=None):
     """Replace one non-ring linker connecting two ring systems.
 
     A linker is a non-ring fragment with exactly two attachment points (degree 2)
@@ -580,6 +613,8 @@ def replace_linker(mol, p, score_threshold, fragcorpus=None, n_replacements=100,
     fragcorpus      : fragment corpus
     n_replacements  : number of replacement linkers to try at the chosen site
     conservative    : if True, similarity-bias the linker sampling
+    protect_smarts  : SMARTS string; linker atoms or bond-endpoint atoms matching
+                      it are skipped.  ``None`` = no exclusion (default).
 
     Returns
     -------
@@ -591,6 +626,7 @@ def replace_linker(mol, p, score_threshold, fragcorpus=None, n_replacements=100,
     linkers_smarts = dcmol[1]
     if not linkers_smarts:
         return []
+    protected_atoms = get_protected_atoms(mol, protect_smarts)
 
     breakable = mol.GetSubstructMatches(_breakbond)
     # _breakbond: b[0] = exo/linker atom, b[1] = ring atom
@@ -609,8 +645,11 @@ def replace_linker(mol, p, score_threshold, fragcorpus=None, n_replacements=100,
             to_break = [b for b in breakable if b[0] in linker_set]
             if len(to_break) != 2:
                 continue
-            if any(atom_is_protected(mol.GetAtomWithIdx(idx))
+            if any(idx in protected_atoms
                    for pair in to_break for idx in pair):
+                continue
+            # Also skip if any atom inside the linker itself is protected
+            if any(idx in protected_atoms for idx in linker_set):
                 continue
             bond_indices = [mol.GetBondBetweenAtoms(*b).GetIdx() for b in to_break]
             cmol = Chem.FragmentOnBonds(mol, bond_indices)
@@ -644,14 +683,15 @@ def replace_linker(mol, p, score_threshold, fragcorpus=None, n_replacements=100,
             Chem.SanitizeMol(combined)
             combined = random.choice(rxn1.RunReactants((combined, frags[1])))[0]
             Chem.SanitizeMol(combined)
-            new_mols.append(_restore_bond_protection(combined, mol))
+            m = _restore_bond_protection(combined, mol)
+            new_mols.append(m)
         except Exception:
             pass
     return _filter_and_dedup(new_mols, p)
 
 
 def replace_ring(mol, p, score_threshold, fragcorpus=None, n_replacements=100,
-                 conservative=True):
+                 conservative=True, protect_smarts=None):
     """Replace one ring system with a different ring drawn from the corpus.
 
     Algorithm
@@ -667,6 +707,21 @@ def replace_ring(mol, p, score_threshold, fragcorpus=None, n_replacements=100,
        everything else is a side chain to reattach.  Build side-chain Mol objects
        with ``GetMolFrags(asMols=True)`` in the same order.
     5. Sample corpus rings; stitch side chains back.
+
+    Parameters
+    ----------
+    mol             : RDKit Mol
+    p               : LACAN profile dict
+    score_threshold : minimum LACAN score for output molecules
+    fragcorpus      : fragment corpus (default: ChEMBL rls.csv)
+    n_replacements  : number of replacement rings to sample
+    conservative    : if True, bias sampling toward structurally similar rings
+    protect_smarts  : SMARTS string; ring systems containing any matching atom are
+                      skipped entirely.  ``None`` = no exclusion (default).
+
+    Returns
+    -------
+    list of RDKit Mol
     """
     if fragcorpus is None:
         fragcorpus = load_corpus()
@@ -674,10 +729,11 @@ def replace_ring(mol, p, score_threshold, fragcorpus=None, n_replacements=100,
     ring_systems = _get_ring_systems(mol)
     if not ring_systems:
         return []
+    protected_atoms = get_protected_atoms(mol, protect_smarts)
 
     valid = []
     for ring_system in ring_systems:
-        if any(atom_is_protected(mol.GetAtomWithIdx(i)) for i in ring_system):
+        if any(i in protected_atoms for i in ring_system):
             continue
         seen = set()
         exo_bonds = []
@@ -758,7 +814,8 @@ def replace_ring(mol, p, score_threshold, fragcorpus=None, n_replacements=100,
                 new_ring = random.choice(products)[0]
                 Chem.SanitizeMol(new_ring)
             if ok:
-                new_mols.append(_restore_bond_protection(new_ring, mol))
+                m = _restore_bond_protection(new_ring, mol)
+            new_mols.append(m)
         except Exception:
             pass
 
