@@ -1,8 +1,16 @@
 Installation
 ============
 
-From source (current)
----------------------
+PyPI
+----
+
+LACAN can be installed directly from PyPI::
+
+    pip install lacan
+
+
+From source
+-----------
 
 Clone the repository and install with pip::
 
@@ -18,13 +26,6 @@ Requirements
 
 * Python ≥ 3.9
 * RDKit
-
-PyPI
-----
-
-Once available, LACAN can also be installed directly from PyPI::
-
-    pip install lacan
 
 Development install
 -------------------
