@@ -10,6 +10,7 @@ from ChEMBL.
    :maxdepth: 2
    :caption: Contents
 
+   installation
    overview
    api/lacan
    api/gen

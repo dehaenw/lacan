@@ -2,8 +2,8 @@ from setuptools import setup
 
 setup(
     name='lacan',
-    version='0.999',    
-    description='filter for adjacent fragments',
+    version='1.0.0',    
+    description='molecular filter for adjacent fragments',
     url='https://github.com/dehaenw/lacan',
     author='Wim Dehaen',
     packages=['lacan','lacan.data'],
@@ -13,6 +13,7 @@ setup(
     extras_require={
         'dev': ['pytest'],
         'docs': ['sphinx', 'sphinx-rtd-theme'],
+        'notebooks': ['scikit-learn','numpy','py3Dmol'],
     },
 )
 

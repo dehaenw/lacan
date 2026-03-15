@@ -2,8 +2,8 @@
 mutate.py — Atom-level mutation operations for LACAN.
 
 This module provides fine-grained single-step mutations: adding, removing, or
-changing individual atoms, bonds, or ring sizes.  These are the EXPLOIT
-operations in the adaptive GA.
+changing individual atoms, bonds, or ring sizes.  These are the operations can
+be considered as the exploitation operation in the adaptive GA.
 
 Each reaction in ``mutate_smarts`` targets a specific chemotype change.
 The dictionary is compiled into ``mutate_ops`` (RDKit Reaction objects) at
@@ -90,8 +90,10 @@ def _apply_mutations_worker(args):
     """Multiprocessing worker: deserialise mol, mutate, re-serialise products.
 
     Mols are passed as SDF block strings (not pickled Mol objects) so that
-    atom/bond properties — in particular the ``_lp`` protection mark — survive
-    the round-trip through ``multiprocessing.Pool``.
+    bond properties — in particular the ``_lp`` bond protection mark — survive
+    the round-trip through ``multiprocessing.Pool``.  Note that
+    ``protect_smarts`` is re-derived on each call, so it does not need
+    to survive serialisation.
 
     Parameters
     ----------
@@ -140,14 +142,14 @@ def apply_mutations_mols(mols, p, score_threshold, n_jobs=-1):
         return result
 
 
-def apply_mutations(mol, p, score_threshold, mode="all"):
+def apply_mutations(mol, p, score_threshold, mode="all", protect_smarts=None):
     """Apply single-step atom-level mutations to a molecule and return passing variants.
 
     For each reaction in ``mutate_ops`` (or a randomly chosen one if
     ``mode="random"``):
 
-    1. Skip the reaction if it would touch a protected atom (checked via
-       :func:`~lacan.protect.reaction_touches_protected`).
+    1. Skip the reaction if it would touch an atom matching ``protect_smarts``
+       (checked via :func:`~lacan.protect.reaction_touches_protected`).
     2. Run the reaction on the molecule; sanitize each product.
     3. Score each product with :func:`~lacan.protect.score_mol_ignoring_protected_bonds`.
     4. Keep products whose score exceeds ``score_threshold``.
@@ -156,12 +158,14 @@ def apply_mutations(mol, p, score_threshold, mode="all"):
 
     Parameters
     ----------
-    mol             : RDKit Mol (may have protected atoms/bonds)
+    mol             : RDKit Mol (may have protected bonds)
     p               : LACAN profile dict
     score_threshold : minimum LACAN score; set 0.0 to accept all LACAN-passing
                       products, 0.8 for stricter drug-likeness filtering
     mode            : ``"all"`` (try every reaction) or ``"random"`` (one random
                       reaction)
+    protect_smarts  : SMARTS string; reactions touching any matching atom are
+                      skipped entirely.  ``None`` = no exclusion (default).
 
     Returns a deduplicated list of RDKit Mol objects.
 
@@ -184,7 +188,7 @@ def apply_mutations(mol, p, score_threshold, mode="all"):
 
     for op in ops:
         rxn = ops[op]
-        if reaction_touches_protected(mol, rxn):
+        if reaction_touches_protected(mol, rxn, protect_smarts):
             continue
         prods = rxn.RunReactants((mol,))
         if len(prods) > 0:

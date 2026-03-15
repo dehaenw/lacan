@@ -1,8 +1,0 @@
-rdkit>=2022.03
-
-[dev]
-pytest
-
-[docs]
-sphinx
-sphinx-rtd-theme

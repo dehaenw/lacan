@@ -20,7 +20,7 @@ from lacan.replace import (
     replace_linker,
     _get_ring_systems,
 )
-from lacan.protect import protect_atoms_matching_smarts
+# atom protection now via protect_smarts= parameter on each operation
 from lacan.lacan import load_profile
 
 
@@ -149,8 +149,8 @@ class TestReplaceRing:
         assert replace_ring(mol, profile, score_threshold=0.0) == []
 
     def test_protected_ring_not_replaced(self, toluene, profile):
-        mol = protect_atoms_matching_smarts(toluene, "c1ccccc1")
-        result = replace_ring(mol, profile, score_threshold=0.0, n_replacements=20)
+        result = replace_ring(toluene, profile, score_threshold=0.0,
+                              n_replacements=20, protect_smarts="c1ccccc1")
         phenyl = Chem.MolFromSmarts("c1ccccc1")
         # Protected ring must survive in every output (if any)
         for m in result:
@@ -219,8 +219,8 @@ class TestReplaceSubstituent:
 
     def test_protected_substituent_site_not_used(self, toluene, profile):
         """Protecting the methyl carbon means the ring-exo bond to it is skipped."""
-        mol = protect_atoms_matching_smarts(toluene, "[CH3]")
-        result = replace_substituent(mol, profile, score_threshold=0.0, n_replacements=30)
+        result = replace_substituent(toluene, profile, score_threshold=0.0,
+                                     n_replacements=30, protect_smarts="[CH3]")
         assert isinstance(result, list)  # must not crash
 
     def test_no_duplicates(self, ibuprofen, profile):
@@ -256,8 +256,8 @@ class TestReplaceLinker:
         assert replace_linker(toluene, profile, score_threshold=0.0) == []
 
     def test_protected_linker_returns_empty(self, diphenylmethane, profile):
-        mol = protect_atoms_matching_smarts(diphenylmethane, "[CH2]")
-        result = replace_linker(mol, profile, score_threshold=0.0, n_replacements=20)
+        result = replace_linker(diphenylmethane, profile, score_threshold=0.0,
+                                n_replacements=20, protect_smarts="[CH2]")
         assert result == []
 
     def test_multisite_random_sampling(self, two_linker_mol, profile):
@@ -301,9 +301,9 @@ class TestDecorateScaffold:
         assert isinstance(result, list)
 
     def test_protected_atoms_skipped_hydrogen_mode(self, toluene, profile):
-        mol = protect_atoms_matching_smarts(toluene, "c1ccccc1")
-        result = decorate_scaffold(mol, profile, score_threshold=0.0,
-                                   mode="Hydrogen", n_replacements=20)
+        result = decorate_scaffold(toluene, profile, score_threshold=0.0,
+                                   mode="Hydrogen", n_replacements=20,
+                                   protect_smarts="c1ccccc1")
         phenyl = Chem.MolFromSmarts("c1ccccc1")
         if result:
             assert all(m.HasSubstructMatch(phenyl) for m in result)

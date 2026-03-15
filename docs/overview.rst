@@ -21,10 +21,10 @@ per endpoint — and looks them up in a pre-built profile.  The PMI score is::
 
 The molecule-level score::
 
-    score = min(0.5 * (min_PMI / t) ** 0.5, 1.0)
+    score = min_PMI / (1 + min_PMI)
 
-equals 0.5 when the worst bond is right at threshold *t* (default 0.05) and
-1.0 when all bonds are comfortably above it.
+saturates toward 1.0 as the worst-bond PMI grows large, and approaches 0
+when the worst bond is near zero.
 
 Module overview
 ---------------
@@ -46,7 +46,7 @@ Module overview
    * - :mod:`lacan.gen`
      - Random generation, corpus biasing, adaptive GA
    * - :mod:`lacan.protect`
-     - Atom/bond protection, ``mol_cleaner``
+     - SMARTS-based atom exclusion, bond protection, ``mol_cleaner``
    * - :mod:`lacan.decompose`
      - Molecule fragmentation; corpus building
 
@@ -77,19 +77,29 @@ Quick start
 Genetic algorithm
 -----------------
 
-:func:`~lacan.gen.generate_optimized_molecules` runs an adaptive GA with two
-modes selected each generation based on population state:
+:func:`~lacan.gen.generate_optimized_molecules` runs an adaptive GA that
+balances exploration and exploitation each generation using two mechanisms:
 
-**EXPLORE** (coarse structural changes)
-    Triggered when mean pairwise Tanimoto distance of the pool drops below
-    ``diversity_threshold``, or when ``plateau_patience`` consecutive
-    generations pass without improvement.  Uses ring/substituent/linker
-    replacement, scaffold decoration, crossover, and fresh random molecules.
+**Smooth explore fraction**
+    A float ``explore_fraction`` (0–1) controls the budget split between
+    exploration arms (ring/substituent/linker replacement, scaffold decoration,
+    crossover, random injection) and exploitation arms (atom-level mutation
+    from :mod:`lacan.mutate`).  It shifts toward mutation when the population
+    plateaus, and toward exploration on diversity collapse, decaying back to a
+    user-set baseline otherwise.
 
-**EXPLOIT** (fine-grained refinement)
-    Used otherwise.  Applies the atom-level mutations from
-    :mod:`lacan.mutate` to refine good leads.  A small explore component is
-    always mixed in to prevent full convergence.
+**Per-operation Thompson Sampling bandit**
+    Each operation is treated as an independent arm with a Beta posterior over
+    its hit rate.  Budget is allocated proportionally to sampled weights each
+    generation, so productive arms receive more budget while all arms remain
+    explored.  Statistics can optionally persist across runs.
 
-See :func:`~lacan.gen.generate_optimized_molecules` for all parameters and
-tuning guidance for fast vs. slow scoring functions.
+Results are collected in a :class:`~lacan.gen.HallOfFame` that retains the
+all-time best diverse molecules with a Tanimoto diversity gate.
+
+**Presets** — ``preset="ml"`` / ``"medium"`` / ``"docking"`` / ``"guacamol"``
+provide sensible defaults for fast, medium, slow, and unlimited-budget scoring
+functions respectively.  Individual parameters always override preset values.
+
+See :func:`~lacan.gen.generate_optimized_molecules` for the full parameter
+reference.

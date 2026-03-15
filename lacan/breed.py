@@ -1,7 +1,7 @@
 """
 breed.py — Molecular crossover via fragment-based recombination.
 
-This module implements the EXPLORE crossover operation used by the adaptive GA
+This module implements the crossover operation used by the adaptive GA
 in gen.py.  Two molecules are cut at their non-ring bonds and their fragments
 are recombined: substituents from one molecule are attached to the core of the
 other, producing offspring that inherit structural features from both parents.
@@ -16,7 +16,8 @@ Algorithm
    one molecule with substituents from the other, fill all attachment points,
    and accept offspring that:
 
-   * pass the LACAN score threshold,
+   * pass the LACAN score threshold (``score_mol > 0.5``;
+     uses the current ``min_PMI / (1 + min_PMI)`` formula),
    * have heavy-atom count in ``[hacmin, hacmax]``,
    * have a "balance ratio" (fraction of atoms from parent 2) in
      ``[min_ratio, max_ratio]`` — this ensures the offspring genuinely
@@ -49,10 +50,22 @@ combine_frags = rdChemReactions.ReactionFromSmarts(
 """Join two dummy attachment points (any bond type)."""
 
 def fragment_molecule(mol,n=3):
-    """
-    this function takes a molecule and cuts it n times. the cuts that are
-    retained are those that have n fragments with one dummy and 1 fragment
-    with n dummies ("substituents and cores")
+    """Cut a molecule at *n* non-ring bonds and return substituents and cores.
+
+    All combinations of *n* non-ring bond indices are tried.
+    A cut is retained only if it produces exactly *n* single-dummy fragments
+    (substituents) and one *n*-dummy fragment (the core).
+
+    Parameters
+    ----------
+    mol : RDKit Mol
+    n   : int — number of cuts to make (default 3)
+
+    Returns
+    -------
+    (substituents, cores) : (list of str, list of str)
+        Canonical SMILES strings with ``*`` dummies.
+        Either list may be empty if no valid cuts exist at the requested depth.
     """
     substituents = set([])
     cores = set([])

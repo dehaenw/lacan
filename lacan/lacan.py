@@ -16,7 +16,7 @@ The atom environment identifier encodes five features:
 * Heavy-atom degree
 * Total hydrogen count (explicit + implicit)
 * Formal charge
-* Smallest ring size the atom belongs to (0 if acyclic)
+* Ring type: 0 if acyclic, 1 if in a non-aromatic ring, 2 if in an aromatic ring
 
 These five integers are hashed to a 32-bit integer via MD5
 (:func:`hash_invariants`).  The two hashes for a bond are sorted and stored as
@@ -46,10 +46,11 @@ near 0 means the combination is chemically unusual.
 
 The molecule-level score is derived from the **minimum** per-bond PMI::
 
-    score = min(0.5 * (min_PMI / t) ** 0.5, 1.0)
+    score = min_PMI / (1 + min_PMI)
 
-This equals 0.5 when the worst bond is right at the threshold *t* (default
-0.05), and 1.0 when all bonds are comfortably above it.
+This saturates toward 1.0 as the worst-bond PMI grows large, and approaches
+0 when the worst bond is near zero.  Bonds below a threshold *t* (default
+0.05) are reported as ``bad_bonds`` in :func:`score_mol`.
 
 CLI usage
 ---------
@@ -99,7 +100,7 @@ def hash_invariants(invs):
     ----------
     invs : list of int
         Flattened atom-environment descriptor (atomic number, degree, H count,
-        charge, ring size, bond type, …).
+        charge, ring type, bond type, …).
 
     Returns
     -------
@@ -182,7 +183,7 @@ def get_atom_invariants(mol):
     2. Heavy-atom degree (number of non-H neighbours)
     3. Total hydrogen count (explicit + implicit)
     4. Formal charge
-    5. Smallest ring size the atom is part of, or 0 if the atom is acyclic
+    5. Ring type: 0 if acyclic, 1 if in a non-aromatic ring, 2 if in an aromatic ring
 
     These are used directly as the innermost layer of the bond-pair hash
     (see :func:`mol_to_pairs`).
@@ -197,22 +198,13 @@ def get_atom_invariants(mol):
         One 5-element descriptor per atom, in atom-index order.
     """
     invs = []
-    sssr = Chem.GetSSSR(mol)
-    min_ring = {}
-    for ring in sssr:
-        for a in ring:
-            if a not in min_ring:
-                min_ring[a] = len(ring)
-            else:
-                if min_ring[a] > len(ring):
-                    min_ring[a] = len(ring)
     for idx, a in enumerate(mol.GetAtoms()):
         inv = [
             a.GetAtomicNum(),
             a.GetDegree(),
             a.GetNumExplicitHs() + a.GetNumImplicitHs(),
             a.GetFormalCharge(),
-            min_ring.get(idx, 0),
+            int(a.IsInRing())+int(a.GetIsAromatic()),
         ]
         invs.append(inv)
     return invs
@@ -358,10 +350,14 @@ def score_mol(mol, profile=None, mode="score", t=0.05):
     bonds only.  Two modes are available:
 
     ``"score"`` (default)
-        Continuous score in [0, 1].  Equals 0.5 when the worst unprotected bond
-        PMI is exactly *t*, and 1.0 when all are comfortably above *t*::
+        Continuous score in [0, 1] computed as::
 
-            score = min(0.5 * (min_PMI / t) ** 0.5, 1.0)
+            score = min_PMI / (1 + min_PMI)
+
+        where ``min_PMI`` is the lowest per-bond PMI over unprotected bonds.
+        Saturates toward 1.0 for well-profiled bonds; approaches 0 for unusual
+        ones.  The threshold *t* does not affect this value — it only determines
+        which bond indices appear in ``info["bad_bonds"]``.
 
     ``"threshold"``
         Binary: 1 if all unprotected bonds pass (PMI ≥ *t*), else 0.
@@ -392,7 +388,7 @@ def score_mol(mol, profile=None, mode="score", t=0.05):
 
     apb_active = [score for i, score in enumerate(apb) if i not in protected]
     if not apb_active:
-        apb_active = [1.0]  # all bonds protected — trivially passes
+        return 1.0, {"bad_bonds": []}  # all bonds protected — trivially passes
 
     info = {"bad_bonds": [i for i, sc in enumerate(apb)
                           if sc < t and i not in protected]}
@@ -400,7 +396,7 @@ def score_mol(mol, profile=None, mode="score", t=0.05):
     if mode == "threshold":
         score = 0 if min(apb_active) < t else 1
     elif mode == "score":
-        score = min(0.5 * (min(apb_active) / t) ** 0.5, 1.0)
+        score = min(apb_active)/(1+min(apb_active))
     else:
         print("mode not supported yet, sorry.")
         score = 0
