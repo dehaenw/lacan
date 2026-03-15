@@ -12,7 +12,7 @@ import os
 import sys
 
 # Make the lacan package importable without installing it
-sys.path.insert(0, os.path.abspath(".."))
+sys.path.insert(0, os.path.abspath('.'))
 
 # ---------------------------------------------------------------------------
 # Project metadata
