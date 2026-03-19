@@ -210,7 +210,7 @@ def get_atom_invariants(mol):
     return invs
 
 
-def get_profile_for_mols(suppl, profile_name, size=2048, n_jobs=1):
+def get_profile_for_mols(suppl, profile_name, size=8192, n_jobs=1):
     """Build a LACAN profile from a molecule supplier and save it to disk.
 
     The profile is a dict ``{"idx": ..., "pairs": ..., "setsize": ...}``
@@ -222,7 +222,7 @@ def get_profile_for_mols(suppl, profile_name, size=2048, n_jobs=1):
     suppl        : iterable of RDKit Mol objects (e.g. SmilesMolSupplier)
     profile_name : str — name under which to save the profile
     size         : int — keep only the *size*-1 most common atom environments
-                   in ``idx`` (reduces profile file size; default 2048)
+                   in ``idx`` (reduces profile file size; default 8192)
     n_jobs       : int — parallel workers; set < 1 for all CPU cores
 
     Returns
@@ -412,7 +412,7 @@ if __name__ == "__main__":
                         help="mode: score or profile", required=False)
     parser.add_argument("-p", "--profile", type=str, default="chembl",
                         help="name of profile to run/generate", required=False)
-    parser.add_argument("-s", "--size", type=int, default=2048,
+    parser.add_argument("-s", "--size", type=int, default=8192,
                         help="top N fragments to keep", required=False)
     parser.add_argument("-t", "--threshold", type=float, default=0.05,
                         help="rejection threshold for bond occurrence", required=False)
