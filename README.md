@@ -99,7 +99,7 @@ Installation is done via Pip. This package requires Python ≥ 3.9 and RDKit.
 
 For installing from source:
 ```bash
-git clone https://github.com/wdehaen/lacan.git
+git clone https://github.com/dehaenw/lacan.git
 cd lacan
 pip install .
 ```
