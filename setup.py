@@ -4,6 +4,8 @@ setup(
     name='lacan',
     version='1.0.0',    
     description='molecular filter for adjacent fragments',
+    long_description=Path("README.md").read_text(),
+    long_description_content_type="text/markdown",
     url='https://github.com/dehaenw/lacan',
     author='Wim Dehaen',
     packages=['lacan','lacan.data'],
