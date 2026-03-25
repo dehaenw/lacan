@@ -1,10 +1,12 @@
 # LACAN: Leveraging Adjacent Co-occurrence of Atomic Neighborhoods
 
-LACAN is a cheminformatics toolkit for **scoring, mutating, and generating drug-like molecules** using a statistical model of chemical bond environments learned from ChEMBL. It is designed as a library for generative chemistry pipelines and includes an adaptive genetic algorithm that can optimise molecules toward any user-defined scoring function.
+LACAN is a cheminformatics toolkit for **scoring, mutating, and generating drug-like molecules** using a statistical model of chemical bond environments learned from ChEMBL. It is designed as a library for generative chemistry pipelines and includes an adaptive genetic algorithm that can optimise molecules toward any user-defined scoring function. 
 
 > *"All sorts of things in this world behave like mirrors."* — Jacques Lacan
 
 📖 **Full documentation:** https://lacan.readthedocs.io/en/latest/
+
+📝 **Preprint:** https://doi.org/10.26434/chemrxiv.15001196/v1
 
 ---
 
@@ -118,11 +120,9 @@ pytest tests/test_protect.py -v    # single module
 
 ## Citation
 
-*Preprint coming soon.*
-
-If you use LACAN in your research, please cite:
+If you use LACAN in your research, please cite the preprint:
 
 ```
-Dehaen W. (2026). LACAN: Leveraging Adjacent Co-occurrence of Atomic Neighborhoods
-for molecular scoring and generation. [Preprint]
+Wim Dehaen. LACAN: Leveraging adjacent co-occurrence of atomic neighborhoods for molecular scoring and generation Authors. ChemRxiv. 24 March 2026.
+DOI: https://doi.org/10.26434/chemrxiv.15001196/v1
 ```
